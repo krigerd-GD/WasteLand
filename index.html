@@ -1,0 +1,2127 @@
+<title>황무지 가족 — 학습 루프 프로토타입</title>
+
+<style>
+/* ══════════════════════════════════════════════════════════
+   황무지 가족 / 학습 루프 프로토타입 v0.2
+   디자인: 계기판(instrument panel) — 슬레이트 지면 + 계기 앰버
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  --ground: #DCDDD7;
+  --panel:  #E9EAE5;
+  --panel-2:#F2F3EF;
+  --line:   #C3C6BE;
+  --line-2: #D5D8D1;
+
+  --ink:   #171D22;
+  --ink-2: #4C565D;
+  --ink-3: #7B848A;
+
+  --amber:      #9E6512;
+  --amber-lit:  #C98A22;
+  --amber-glow: rgba(201,138,34,.14);
+
+  --steel:     #35617F;
+  --verdigris: #47694E;
+  --rust:      #96402A;
+
+  --shadow: 0 1px 0 rgba(255,255,255,.6), 0 2px 14px rgba(23,29,34,.07);
+  --scan: rgba(23,29,34,.028);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #0E1317;
+    --panel:  #161D23;
+    --panel-2:#1D252C;
+    --line:   #2A343C;
+    --line-2: #212A31;
+
+    --ink:   #E3E7E6;
+    --ink-2: #A1ACB2;
+    --ink-3: #6B777E;
+
+    --amber:      #E8A33D;
+    --amber-lit:  #F4C783;
+    --amber-glow: rgba(232,163,61,.13);
+
+    --steel:     #78A8CB;
+    --verdigris: #84A98B;
+    --rust:      #D07653;
+
+    --shadow: 0 1px 0 rgba(255,255,255,.03), 0 4px 20px rgba(0,0,0,.35);
+    --scan: rgba(255,255,255,.018);
+  }
+}
+
+:root[data-theme="light"] {
+  --ground: #DCDDD7; --panel: #E9EAE5; --panel-2:#F2F3EF;
+  --line: #C3C6BE; --line-2: #D5D8D1;
+  --ink: #171D22; --ink-2: #4C565D; --ink-3: #7B848A;
+  --amber: #9E6512; --amber-lit: #C98A22; --amber-glow: rgba(201,138,34,.14);
+  --steel: #35617F; --verdigris: #47694E; --rust: #96402A;
+  --shadow: 0 1px 0 rgba(255,255,255,.6), 0 2px 14px rgba(23,29,34,.07);
+  --scan: rgba(23,29,34,.028);
+}
+:root[data-theme="dark"] {
+  --ground: #0E1317; --panel: #161D23; --panel-2:#1D252C;
+  --line: #2A343C; --line-2: #212A31;
+  --ink: #E3E7E6; --ink-2: #A1ACB2; --ink-3: #6B777E;
+  --amber: #E8A33D; --amber-lit: #F4C783; --amber-glow: rgba(232,163,61,.13);
+  --steel: #78A8CB; --verdigris: #84A98B; --rust: #D07653;
+  --shadow: 0 1px 0 rgba(255,255,255,.03), 0 4px 20px rgba(0,0,0,.35);
+  --scan: rgba(255,255,255,.018);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+#dust { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .5; }
+
+.wrap { position: relative; z-index: 1; max-width: 1440px; margin: 0 auto; padding: 0 20px 72px; }
+
+.tick-rule {
+  height: 9px;
+  background-image: linear-gradient(to right, var(--line) 1px, transparent 1px);
+  background-size: 8px 4px; background-repeat: repeat-x; background-position: bottom left;
+  border-bottom: 1px solid var(--line); opacity: .8;
+}
+
+.rail { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 8px 24px; padding: 22px 0 12px; }
+.brand { display: flex; align-items: baseline; gap: 12px; margin-right: auto; }
+.brand h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; }
+.brand .ver {
+  font-family: ui-monospace, Consolas, "SF Mono", monospace;
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
+}
+.gauge { display: flex; flex-direction: column; gap: 1px; }
+.gauge .k {
+  font-family: ui-monospace, Consolas, "SF Mono", monospace;
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3);
+}
+.gauge .v { font-size: 14px; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.gauge .v.hi { color: var(--amber); }
+.railbtns { display: flex; gap: 6px; }
+
+button {
+  font-family: inherit; font-size: 13px; color: var(--ink-2);
+  background: var(--panel); border: 1px solid var(--line);
+  padding: 6px 12px; cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+button:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-3); }
+button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+button:disabled { opacity: .38; cursor: default; }
+
+.board {
+  display: grid; grid-template-columns: 292px minmax(0,1fr) 328px;
+  gap: 18px; margin-top: 18px; align-items: start;
+}
+@media (max-width: 1120px) {
+  .board { grid-template-columns: 1fr; }
+  .col-feed { order: -1; }
+}
+
+.card { background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.card + .card { margin-top: 18px; }
+.card > header {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 11px 14px 9px; border-bottom: 1px solid var(--line);
+  background: repeating-linear-gradient(-45deg, var(--scan) 0 2px, transparent 2px 6px);
+}
+.card > header .eyebrow {
+  font-family: ui-monospace, Consolas, "SF Mono", monospace;
+  font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-3);
+}
+.card > header .title { font-size: 13px; font-weight: 700; letter-spacing: -.01em; }
+.card > .body { padding: 14px; }
+
+/* 스택 */
+.stacknote { font-size: 12px; color: var(--ink-3); margin: 0 0 12px; }
+.stack { list-style: none; margin: 0; padding: 0; }
+.stack li {
+  display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px;
+  padding: 8px 8px 8px 4px; border-top: 1px solid var(--line-2);
+}
+.stack li:first-child { border-top: 0; }
+.stack li[data-top="1"] { background: var(--amber-glow); box-shadow: inset 2px 0 0 var(--amber); }
+.stack .num {
+  font-family: ui-monospace, Consolas, "SF Mono", monospace;
+  font-size: 11px; color: var(--ink-3); text-align: center; font-variant-numeric: tabular-nums;
+}
+.stack li[data-top="1"] .num { color: var(--amber); font-weight: 700; }
+.stack .nm { font-size: 13px; font-weight: 600; }
+.stack .goal { display: block; font-size: 11px; font-weight: 400; color: var(--ink-3); line-height: 1.4; }
+.stack .mv { display: flex; gap: 3px; }
+.stack .mv button { padding: 2px 7px; font-size: 11px; line-height: 1.3; }
+.locknote {
+  margin: 12px 0 0; padding: 8px 10px; font-size: 11.5px; line-height: 1.5;
+  color: var(--verdigris); border-left: 2px solid var(--verdigris); background: var(--panel-2);
+}
+
+/* 게이지 */
+.meters { display: grid; gap: 10px; }
+.meter .top { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; margin-bottom: 4px; }
+.meter .top b { font-weight: 600; }
+.meter .top span {
+  font-family: ui-monospace, Consolas, "SF Mono", monospace;
+  font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums;
+}
+.bar { height: 5px; background: var(--line-2); position: relative; overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; background: var(--ink-3); transition: width .3s; }
+.bar i.ok { background: var(--verdigris); }
+.bar i.warn { background: var(--amber); }
+.bar i.bad { background: var(--rust); }
+.meter.gone .top b { text-decoration: line-through; color: var(--ink-3); }
+
+.res { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--line-2); border: 1px solid var(--line-2); }
+.res div { background: var(--panel-2); padding: 9px 4px; text-align: center; }
+.res .k { display: block; font-size: 10px; letter-spacing: .1em; color: var(--ink-3); }
+.res .v { display: block; font-size: 19px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.res .v.low { color: var(--rust); }
+
+/* 해저드 / 모듈 */
+.hzrow { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; padding: 3px 8px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink-2);
+}
+.chip.on { border-color: var(--rust); color: var(--rust); }
+.chip.mit { border-color: var(--verdigris); color: var(--verdigris); text-decoration: line-through; }
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.slotrow { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.slotbox {
+  flex: 1 1 auto; min-width: 74px; text-align: center;
+  border: 1px dashed var(--line); padding: 7px 5px; font-size: 11.5px; color: var(--ink-3);
+}
+.slotbox.filled { border-style: solid; border-color: var(--amber); color: var(--ink); background: var(--amber-glow); }
+.slotbox b { display: block; font-size: 12px; font-weight: 700; }
+.subnote { font-size: 11.5px; color: var(--ink-3); margin: 10px 0 0; line-height: 1.5; }
+
+/* 사건 / 경로 / 밤 */
+.ev-region {
+  font-family: ui-monospace, Consolas, "SF Mono", monospace;
+  font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--amber);
+}
+.ev-title { margin: 6px 0 10px; font-size: 25px; font-weight: 800; letter-spacing: -.03em; text-wrap: balance; line-height: 1.25; }
+.ev-body { margin: 0 0 16px; max-width: 62ch; color: var(--ink-2); }
+
+.read {
+  display: flex; gap: 11px; align-items: flex-start;
+  padding: 11px 13px; margin-bottom: 16px; background: var(--panel-2); border-left: 2px solid var(--amber);
+}
+.read .lb {
+  font-family: ui-monospace, Consolas, "SF Mono", monospace;
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-3); padding-top: 3px; white-space: nowrap;
+}
+.read .tx { font-size: 13.5px; }
+.read .tx b { color: var(--amber); }
+
+.choices { display: grid; gap: 9px; }
+.choice {
+  display: block; width: 100%; text-align: left;
+  background: var(--panel-2); border: 1px solid var(--line); padding: 12px 14px;
+}
+.choice:hover:not(:disabled) { border-color: var(--amber); background: var(--amber-glow); }
+.choice .ax {
+  font-family: ui-monospace, Consolas, "SF Mono", monospace;
+  font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; display: block; margin-bottom: 3px;
+}
+.choice .ln { display: block; font-size: 14.5px; font-weight: 600; color: var(--ink); letter-spacing: -.01em; }
+.choice .hint {
+  display: block; margin-top: 5px;
+  font-family: ui-monospace, Consolas, "SF Mono", monospace; font-size: 11px; color: var(--ink-3);
+}
+.choice .promote { display: block; margin-top: 3px; font-size: 11.5px; color: var(--ink-3); }
+.choice .cost { display: block; margin-top: 4px; font-size: 11.5px; color: var(--ink-3); }
+.choice .cost b { color: var(--rust); font-weight: 600; }
+.ax-guard { color: var(--steel); }
+.ax-eff   { color: var(--amber); }
+.ax-comp  { color: var(--verdigris); }
+.ax-none  { color: var(--ink-3); }
+
+.nextbtn {
+  padding: 11px 22px; font-size: 14px; font-weight: 700;
+  color: var(--ground); background: var(--amber); border-color: var(--amber);
+}
+.nextbtn:hover:not(:disabled) { background: var(--amber-lit); border-color: var(--amber-lit); color: var(--ground); }
+
+.apbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.apbar .lb {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3);
+}
+.apbar .pips { display: flex; gap: 4px; }
+.apbar .pip { width: 11px; height: 11px; border: 1px solid var(--amber); }
+.apbar .pip.spent { border-color: var(--line); background: transparent; }
+.apbar .pip.left { background: var(--amber); }
+
+/* 로그 */
+.log { margin: 0; padding: 0; list-style: none; max-height: 360px; overflow-y: auto; }
+.log li { padding: 7px 0; border-top: 1px solid var(--line-2); font-size: 13px; line-height: 1.55; animation: fade .32s ease-out; }
+.log li:first-child { border-top: 0; }
+.log .who {
+  font-family: ui-monospace, Consolas, "SF Mono", monospace;
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin-right: 8px;
+}
+.log li.robot { color: var(--ink); }
+.log li.robot .who { color: var(--amber); }
+.log li.dog .who { color: var(--steel); }
+.log li.sys { color: var(--ink-3); font-size: 12px; }
+.log li.unlock {
+  color: var(--amber); font-weight: 600; background: var(--amber-glow);
+  padding-left: 8px; box-shadow: inset 2px 0 0 var(--amber);
+}
+.log li.bad, .log li.bad .who { color: var(--rust); }
+@keyframes fade { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .log li { animation: none; } }
+
+/* 학습 상태창 */
+.axis-group + .axis-group { margin-top: 16px; }
+.axis-hd {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding-bottom: 5px; margin-bottom: 8px; border-bottom: 1px solid var(--line);
+}
+.axis-hd .nm { font-size: 13px; font-weight: 700; letter-spacing: -.01em; }
+.axis-hd .en {
+  font-family: ui-monospace, Consolas, "SF Mono", monospace;
+  font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3);
+}
+.axis-guard .axis-hd { border-bottom-color: var(--steel); }
+.axis-guard .axis-hd .nm { color: var(--steel); }
+.axis-eff .axis-hd { border-bottom-color: var(--amber); }
+.axis-eff .axis-hd .nm { color: var(--amber); }
+.axis-comp .axis-hd { border-bottom-color: var(--verdigris); }
+.axis-comp .axis-hd .nm { color: var(--verdigris); }
+
+.slot { display: grid; grid-template-columns: 16px 1fr; gap: 9px; padding: 7px 0; border-top: 1px solid var(--line-2); }
+.slot:first-of-type { border-top: 0; }
+.slot .pip { width: 9px; height: 9px; margin-top: 6px; border: 1px solid var(--ink-3); border-radius: 50%; }
+.slot.on .pip { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-glow); }
+.slot.core .pip { border-radius: 1px; transform: rotate(45deg); }
+.slot .nm { font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
+.slot.off .nm { color: var(--ink-3); font-family: ui-monospace, Consolas, monospace; letter-spacing: .1em; font-weight: 400; }
+.slot .fx { display: block; font-size: 11.5px; color: var(--ink-3); line-height: 1.45; }
+.slot .core-tag {
+  display: inline-block; margin-left: 6px;
+  font-family: ui-monospace, Consolas, monospace; font-size: 9px; letter-spacing: .12em;
+  color: var(--amber); border: 1px solid var(--amber); padding: 0 4px; vertical-align: 1px;
+}
+.slot.just { animation: flare .9s ease-out; }
+@keyframes flare { 0% { background: var(--amber); } 100% { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .slot.just { animation: none; } }
+
+.panel-locked { padding: 22px 14px; text-align: center; color: var(--ink-3); font-size: 12.5px; line-height: 1.6; }
+.dbg {
+  margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line);
+  font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--ink-3); line-height: 1.7;
+}
+.dbg b { color: var(--amber); }
+.dbg .hd { letter-spacing: .14em; text-transform: uppercase; color: var(--rust); }
+
+/* 오버레이 */
+.ovl {
+  position: fixed; inset: 0; z-index: 40;
+  background: color-mix(in srgb, var(--ground) 88%, transparent);
+  backdrop-filter: blur(3px);
+  display: grid; place-items: start center; padding: 40px 20px; overflow-y: auto;
+}
+.ovl[hidden] { display: none; }
+.sheet { width: 100%; max-width: 680px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.sheet .body { padding: 24px 26px 26px; }
+.sheet h2 { margin: 0 0 4px; font-size: 27px; font-weight: 800; letter-spacing: -.035em; text-wrap: balance; }
+.sheet .kicker {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--amber); margin-bottom: 2px;
+}
+.sheet p { max-width: 62ch; }
+.sheet .quote { margin: 18px 0; padding: 14px 16px; background: var(--panel-2); border-left: 2px solid var(--amber); font-size: 14.5px; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; margin: 14px 0; }
+.tbl th, .tbl td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line-2); }
+.tbl th {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); font-weight: 400;
+}
+.tbl td.n { font-variant-numeric: tabular-nums; text-align: right; padding-right: 0; }
+.flag { margin: 16px 0; padding: 11px 13px; border-left: 2px solid var(--rust); background: var(--panel-2); font-size: 12.5px; line-height: 1.6; color: var(--ink-2); }
+.flag b { color: var(--rust); }
+.opt { padding: 13px 0; border-top: 1px solid var(--line-2); }
+.opt:first-of-type { border-top: 0; }
+.opt .lb { font-size: 13.5px; font-weight: 700; }
+.opt .ds { font-size: 12px; color: var(--ink-3); margin: 2px 0 8px; max-width: 58ch; }
+.seg { display: inline-flex; border: 1px solid var(--line); }
+.seg button { border: 0; border-right: 1px solid var(--line); background: var(--panel-2); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--amber); color: var(--ground); font-weight: 700; }
+.hid-note { font-size: 12.5px; color: var(--verdigris); line-height: 1.6; }
+.sheetfoot { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+
+/* ── 오프닝 (시놉시스) ─────────────────────────── */
+.pro-ovl {
+  position: fixed; inset: 0; z-index: 60;
+  background: var(--ground);
+  overflow-y: auto;
+  padding: 10vh 24px 140px;
+}
+.pro-ovl[hidden] { display: none; }
+.pro-ovl::before {
+  content: ""; position: fixed; inset: auto 0 0 0; height: 140px;
+  background: linear-gradient(to top, var(--ground) 32%, transparent);
+  pointer-events: none;
+}
+.pro { max-width: 44ch; margin: 0 auto; }
+.pro .slug {
+  font-family: ui-monospace, Consolas, "SF Mono", monospace;
+  font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--ink-3); display: block; margin-bottom: 6px;
+}
+.pro .ttl {
+  margin: 0 0 30px;
+  font-size: 33px; font-weight: 800; letter-spacing: -.045em; line-height: 1.15;
+  text-wrap: balance;
+}
+.pro .ttl i {
+  display: block; margin-top: 7px;
+  font-style: normal; font-size: 12px; font-weight: 400; letter-spacing: .06em;
+  color: var(--ink-3);
+}
+.pro p {
+  margin: 0 0 1.5em;
+  font-size: 16.5px; line-height: 2.0; color: var(--ink-2);
+  opacity: 0; transform: translateY(7px);
+  transition: opacity 1s ease-out, transform 1s ease-out;
+}
+.pro p.in { opacity: 1; transform: none; }
+.pro p.thesis { color: var(--ink); font-weight: 600; }
+.pro p.robot { color: var(--amber); padding-left: 14px; box-shadow: inset 2px 0 0 var(--amber); }
+.pro.still p { transition: none; }
+@media (prefers-reduced-motion: reduce) { .pro p { transition: none; } }
+
+/* 기획용 카운터 켤 때만 변주 문단 표시 */
+.pro.dbg p[data-var="1"] { position: relative; }
+.pro.dbg p[data-var="1"]::before {
+  content: "◆"; position: absolute; left: -22px; top: .45em;
+  font-size: 9px; color: var(--rust);
+}
+.pro .dbgnote {
+  margin-top: 34px; padding-top: 14px; border-top: 1px dashed var(--line);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px; line-height: 1.75; color: var(--ink-3);
+}
+.pro .dbgnote b { color: var(--rust); }
+
+.pro-bar {
+  position: fixed; inset: auto 0 0 0; z-index: 61;
+  display: flex; justify-content: center; gap: 8px;
+  padding: 22px 24px 30px;
+  pointer-events: none;
+}
+.pro-bar button { pointer-events: auto; }
+
+footer.note {
+  margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--line);
+  font-size: 12px; color: var(--ink-3); line-height: 1.7; max-width: 82ch;
+}
+footer.note code { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: var(--ink-2); }
+footer.note b { color: var(--ink-2); }
+</style>
+
+<canvas id="dust" aria-hidden="true"></canvas>
+
+<div class="wrap">
+  <div class="rail">
+    <div class="brand">
+      <h1>황무지 가족</h1>
+      <span class="ver">learning-loop proto v0.2</span>
+    </div>
+    <div class="gauge"><span class="k">Region</span><span class="v" id="g-region">1 / 4</span></div>
+    <div class="gauge"><span class="k">Event</span><span class="v" id="g-event">0 / 16</span></div>
+    <div class="gauge"><span class="k">Routines</span><span class="v hi" id="g-rtn">0 / 9</span></div>
+    <div class="gauge"><span class="k">Run</span><span class="v" id="g-run">1</span></div>
+    <div class="railbtns">
+      <button id="b-rec" type="button">기록</button>
+      <button id="b-set" type="button">설정</button>
+    </div>
+  </div>
+  <div class="tick-rule"></div>
+
+  <div class="board">
+    <div class="col-left">
+      <section class="card">
+        <header><span class="title">로봇 우선순위 스택</span><span class="eyebrow">priority stack</span></header>
+        <div class="body">
+          <p class="stacknote">로봇은 <b>스택 상단에서 가장 먼저 적용 가능한 태그</b>로 스스로 판단한다. 정찰 순위는 낮의 경로 정보 가시성도 결정한다.</p>
+          <ul class="stack" id="stack"></ul>
+          <p class="locknote" id="locknote" hidden></p>
+        </div>
+      </section>
+
+      <section class="card">
+        <header><span class="title">환경 · 모듈</span><span class="eyebrow">hazard / modules</span></header>
+        <div class="body" id="envbox"></div>
+      </section>
+
+      <section class="card">
+        <header><span class="title">가족 상태</span><span class="eyebrow">vitals</span></header>
+        <div class="body"><div class="meters" id="meters"></div></div>
+      </section>
+
+      <section class="card">
+        <header><span class="title">자원</span><span class="eyebrow">stock</span></header>
+        <div class="body"><div class="res" id="res"></div></div>
+      </section>
+    </div>
+
+    <div class="col-feed">
+      <section class="card">
+        <header><span class="title" id="feed-hd">사건</span><span class="eyebrow" id="feed-eb">field event</span></header>
+        <div class="body" id="feed"></div>
+      </section>
+
+      <section class="card">
+        <header><span class="title">일지</span><span class="eyebrow">log</span></header>
+        <div class="body"><ul class="log" id="log"></ul></div>
+      </section>
+    </div>
+
+    <div class="col-right">
+      <section class="card">
+        <header><span class="title">학습 상태창</span><span class="eyebrow">routines</span></header>
+        <div class="body" id="learn"></div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="note">
+    <b>검증 대상</b> — 우선순위 태그 조정 → 로봇 자율 판단 → 학습 누적 → 루틴 해금 → 자아 3축 → 엔딩 분기.<br>
+    <b>낮</b> 경로 선택(해저드·자원 트레이드오프) → 사건 4회 → <b>밤</b> 정비(행동 포인트로 수리·제작·돌봄·대화). 학습 누적은 <b>낮 사건에서만</b> 발생한다 — 밤은 관계·자원 채널.<br>
+    <b>오프닝</b>은 매 회차 시작마다 재생된다. 문단 슬롯마다 조건부 변주 후보를 두고, 조건을 만족하는 것 중 가장 구체적인 것을 고르되 동순위는 랜덤 — 회차 수·도달 엔딩·개 상실 경험에 따라 문장이 갈리거나 새 문단이 끼어든다. 승계되는 것은 플래그뿐이며 밸런스에는 관여하지 않는다.<br>
+    데이터는 기획서 §3 스키마를 그대로 옮긴 <code>RobotPriorityTagTable / RobotRoutineTable / EventTable / EnvironmentHazardTable / ModulePartTable</code>이며, 소스 상단 <code>TUNE</code>에 밸런스 상수가 한곳에 모여 있다.
+    누적 중 수치는 비노출(§2-3 확정) — 설정의 <b>기획용 카운터</b>로만 드러난다.
+  </footer>
+</div>
+
+<div class="pro-ovl" id="ovl-pro" hidden>
+  <div class="pro" id="pro-body"></div>
+  <div class="pro-bar">
+    <button type="button" id="b-pro-all">전부 보기</button>
+    <button type="button" class="nextbtn" id="b-pro-go">출발</button>
+  </div>
+</div>
+
+<div class="ovl" id="ovl-end" hidden><div class="sheet"><div class="body" id="end-body"></div></div></div>
+
+<div class="ovl" id="ovl-set" hidden>
+  <div class="sheet"><div class="body">
+    <div class="kicker">settings</div>
+    <h2>설정</h2>
+    <p style="color:var(--ink-2);margin-top:2px">난이도 외 두 항목은 기획서에 <b>🔴 미확정</b>으로 남은 논점이다. 플레이로 비교해 결정하기 위해 토글로 뺐다.</p>
+
+    <div class="opt">
+      <div class="lb">난이도</div>
+      <div class="ds">어려움이 기준 밸런스(기획 의도). 개 이탈 임계·환경 압박 중첩·개 상실 영구성·모듈 슬롯 수·밤 행동 포인트가 모두 여기에 종속된다.</div>
+      <div class="seg" id="seg-diff">
+        <button type="button" data-v="hard">어려움 (기준)</button>
+        <button type="button" data-v="easy">쉬움</button>
+      </div>
+    </div>
+
+    <div class="opt">
+      <div class="lb">🔴 상태창 노출 범위 <span style="font-weight:400;color:var(--ink-3)">— 기획서 §2-3 미확정</span></div>
+      <div class="ds">A = 첫 해금 전까지 상태창 자체가 닫힘(완료 보상감↑). B = 상태창은 상시 열려 있고 미해금 항목만 <code>???</code>로 가려짐(학습 진행 인지↑).</div>
+      <div class="seg" id="seg-panel">
+        <button type="button" data-v="A">A · 완료 후 개방</button>
+        <button type="button" data-v="B">B · 상시 + ??? 마스킹</button>
+      </div>
+    </div>
+
+    <div class="opt">
+      <div class="lb">기획용 카운터</div>
+      <div class="ds">축 누적 수치와 다음 해금까지 남은 횟수를 표시한다. 플레이어에게는 비노출이 정본 — 밸런스 튜닝 중에만 켠다.</div>
+      <div class="seg" id="seg-dbg">
+        <button type="button" data-v="off">끔</button>
+        <button type="button" data-v="on">켬</button>
+      </div>
+    </div>
+
+    <div class="sheetfoot">
+      <button type="button" id="b-set-close">닫기</button>
+      <button type="button" id="b-restart">이 설정으로 새 회차</button>
+    </div>
+  </div></div>
+</div>
+
+<div class="ovl" id="ovl-rec" hidden><div class="sheet"><div class="body" id="rec-body"></div></div></div>
+
+<script>
+"use strict";
+
+/* ══════════════════════════════════════════════════════════
+   ① TUNE — 밸런스 상수 단일 소유처
+   ══════════════════════════════════════════════════════════ */
+
+const TUNE = {
+  eventsPerRegion: 4,          // 4지역 × 4 = 16사건
+
+  startRes:  { water:7, power:6, meds:4, parts:4 },
+  startRel:  { dogTrust:5, dogStress:2, hp:8, mind:7 },
+  startHull: 6,
+
+  nightWater: 1,
+  nightPower: 1,
+  nightAP:      { hard:2, easy:3 },
+  moduleSlots:  { hard:3, easy:4 },
+  dogStressLimit: { hard:10, easy:12 },
+
+  moduleCost: 3,               // 부품
+  repairCost: 2,               // 부품 → 내구 +3
+  chargeCost: 2,               // 전력 → 내구 +2
+  dogCareCost: 1,              // 약품 → 스트레스 -3
+
+  lowMindThreshold: 2          // 이하면 밤 행동 포인트 -1, 예측 표시 차단
+};
+
+/* ══════════════════════════════════════════════════════════
+   DATA — 기획서 §3 에셋 데이터 스키마 대응
+   ══════════════════════════════════════════════════════════ */
+
+const DATA = {
+
+  /* RobotPriorityTagTable */
+  tags: [
+    { id:"TAG_GuardDog", nm:"개 보호",   goal:"개 주변을 유지하고 위험원을 차단",   w:"개 스트레스 높을 때 +2" },
+    { id:"TAG_Gather",   nm:"자원 수집", goal:"주변 회수 가능 자원을 확보",         w:"자원 임계 미달 시 +2" },
+    { id:"TAG_Scout",    nm:"정찰",      goal:"경로를 선행 탐색하고 보고",           w:"미탐색 구역 +1" },
+    { id:"TAG_Obey",     nm:"지시 대기", goal:"주인의 지시가 있을 때까지 판단 보류", w:"주인 근접 +1" },
+    { id:"TAG_Repair",   nm:"자기 정비", goal:"자기 손상을 우선 복구",               w:"내구 임계 미달 시 +2" }
+  ],
+
+  axes: {
+    guard: { nm:"수호형", en:"guardian",   cls:"ax-guard" },
+    eff:   { nm:"효율형", en:"efficiency", cls:"ax-eff"   },
+    comp:  { nm:"순응형", en:"compliance", cls:"ax-comp"  }
+  },
+
+  /* RobotRoutineTable — n = 직전 티어 이후 필요한 해당 축 누적 선택 수 */
+  routines: [
+    { id:"RTN_GRD_1", axis:"guard", nm:"사이 끼어들기", n:2, core:false,
+      fx:"개 스트레스 증가를 1 완화",
+      line:"위험원과 개 사이에 제가 서겠습니다. 앞으로는 지시를 기다리지 않습니다." },
+    { id:"RTN_GRD_2", axis:"guard", nm:"위험 선고지",   n:3, core:false,
+      fx:"주인공 피해 1 완화 · 경로의 해저드를 항상 공개",
+      line:"3초 뒤 저 구조물이 무너집니다. 먼저 말씀드리는 편이 낫다고 판단했습니다." },
+    { id:"RTN_GRD_C", axis:"guard", nm:"최후의 방패",   n:3, core:true,
+      fx:"치명 피해를 로봇 내구로 대신 받음",
+      line:"제 잔해로 당신을 덮을 수 있다면, 그것이 제 마지막 기능입니다." },
+
+    { id:"RTN_EFF_1", axis:"eff", nm:"경로 선산출",   n:2, core:false,
+      fx:"경로 정보 전부 공개 · 지역 이동마다 부품 +1",
+      line:"당신이 묻기 전에 경로를 세 개 준비해 두었습니다." },
+    { id:"RTN_EFF_2", axis:"eff", nm:"선별 회수",     n:3, core:false,
+      fx:"효율 선택 시 부품 +1 추가",
+      line:"가치가 낮은 품목은 이제 보고하지 않습니다. 시간이 자원입니다." },
+    { id:"RTN_EFF_C", axis:"eff", nm:"완전 자동화",   n:3, core:true,
+      fx:"밤 정비 전력 소비 없음 · 밤 행동 포인트 +1",
+      line:"정비, 수집, 경로. 제가 처리합니다. 당신은 쉬십시오." },
+
+    { id:"RTN_CMP_1", axis:"comp", nm:"응답 지연 제거", n:2, core:false,
+      fx:"순응 선택의 지연 비용(식수·전력) 없음",
+      line:"질문을 줄였습니다. 지시가 곧 실행입니다." },
+    { id:"RTN_CMP_2", axis:"comp", nm:"의도 추론",      n:3, core:false,
+      fx:"사건 선택지의 예상 결과를 미리 보고",
+      line:"말씀하신 것과 원하시는 것이 다를 때가 있습니다. 후자를 따르겠습니다." },
+    { id:"RTN_CMP_C", axis:"comp", nm:"완전 동조",      n:3, core:true,
+      fx:"스택 수동 조정 불가 — 선택만이 스택을 정한다",
+      line:"제 판단 회로를 잠갔습니다. 저는 당신입니다." }
+  ],
+
+  /* EnvironmentHazardTable */
+  hazards: [
+    { id:"HZ_Heat",  nm:"고온",        per:{ water:-1 },        mit:"MOD_Heatsink", ds:"사건마다 식수 -1" },
+    { id:"HZ_Rad",   nm:"방사능",      per:{ hp:-1 },           mit:"MOD_Shield",   ds:"사건마다 체력 -1" },
+    { id:"HZ_Dust",  nm:"먼지 폭풍",   per:{ dogStress:1 },     mit:"MOD_Sensor",   ds:"사건마다 개 스트레스 +1 · 경로 정보 차단" },
+    { id:"HZ_Drain", nm:"배터리 방전", per:{ power:-1 },        mit:"MOD_Battery",  ds:"사건마다 전력 -1" }
+  ],
+
+  /* ModulePartTable */
+  modules: [
+    { id:"MOD_Heatsink", nm:"방열판",  slot:"방열", ds:"고온 무효화" },
+    { id:"MOD_Shield",   nm:"차폐재",  slot:"외장", ds:"방사능 무효화" },
+    { id:"MOD_Sensor",   nm:"센서",    slot:"센서", ds:"먼지 폭풍 무효화" },
+    { id:"MOD_Battery",  nm:"배터리",  slot:"전원", ds:"배터리 방전 무효화" },
+    { id:"MOD_Cargo",    nm:"적재함",  slot:"적재", ds:"사건 자원 획득 +1" }
+  ],
+
+  regions: [
+    { n:1, nm:"갈라진 고속도로" },
+    { n:2, nm:"침수된 급수 시설" },
+    { n:3, nm:"먼지 폭풍 지대" },
+    { n:4, nm:"옛 연구소 외곽" }
+  ],
+
+  /* 낮 경로 — 해저드와 자원의 트레이드오프 */
+  paths: {
+    1: [
+      { nm:"고가도로 상단",   hz:["HZ_Heat"],              fx:{},                 ds:"그늘이 없다. 대신 다음 구간이 통째로 보인다." },
+      { nm:"지하 배수로",     hz:["HZ_Dust"],              fx:{ water:1 },        ds:"고인 물이 있다. 시야는 팔 길이만큼." },
+      { nm:"차량 행렬 사이",  hz:["HZ_Heat","HZ_Drain"],   fx:{ parts:2 },        ds:"뜯을 것이 많다. 금속이 하루 종일 달아 있다." }
+    ],
+    2: [
+      { nm:"관리 통로",       hz:["HZ_Drain"],             fx:{ power:1 },        ds:"배전반이 살아 있다. 전등은 깜빡인다." },
+      { nm:"침수 구역 직통",  hz:["HZ_Rad"],               fx:{ water:3 },        ds:"저수부에 바로 닿는다. 계측기가 계속 울린다." },
+      { nm:"외벽 우회",       hz:[],                       fx:{ water:-1 },       ds:"안전하다. 반나절이 더 든다." }
+    ],
+    3: [
+      { nm:"폭풍 외곽",       hz:["HZ_Dust"],              fx:{},                 ds:"모래를 등지고 크게 돈다." },
+      { nm:"폐차장 관통",     hz:["HZ_Dust","HZ_Heat"],    fx:{ parts:3 },        ds:"부품의 산. 바람이 그대로 들어온다." },
+      { nm:"지하 연결로",     hz:["HZ_Drain","HZ_Rad"],    fx:{ meds:2 },         ds:"의무실 잔해를 지난다. 계측기는 보지 않는 편이 낫다." }
+    ],
+    4: [
+      { nm:"정문 접근로",     hz:["HZ_Rad"],               fx:{},                 ds:"포장도로가 남아 있다. 흙이 유리처럼 굳어 있다." },
+      { nm:"냉각탑 경유",     hz:["HZ_Heat","HZ_Drain"],   fx:{ power:3 },        ds:"발전 설비가 아직 미열을 낸다." },
+      { nm:"울타리 파손부",   hz:["HZ_Dust"],              fx:{ parts:1, meds:1 }, ds:"누군가 이미 뜯고 들어간 자리." }
+    ]
+  },
+
+  /* EventTable — apply = 로봇 자율 판단 후보 태그 */
+  events: [
+    { id:"EV_01", r:[1], nm:"무너진 육교", apply:["TAG_Gather","TAG_GuardDog","TAG_Scout"],
+      tx:"육교가 반으로 꺾여 통로를 막았다. 잔해 아래 규격 부품 상자가 보이고, 개는 그 위 철근 사이를 계속 서성인다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개부터 내려. 상자는 나중이다.", fx:{dogStress:-2,dogTrust:1},
+          rs:"로봇이 적재함을 낮춰 개를 받아 안는다. 상자는 잔해와 함께 그대로 남았다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"상자를 먼저 빼. 개는 알아서 피한다.", fx:{parts:2,dogStress:2},
+          rs:"로봇 팔이 잔해를 밀어내고 상자를 회수한다. 철근이 흔들리는 동안 개는 짖으며 물러났다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"아무것도 하지 마. 내가 신호할 때까지.", fx:{water:-1},
+          rs:"로봇은 팔을 내린 채 정지한다. 당신이 직접 잔해를 확인하는 데 한나절이 갔다." }
+      ]},
+
+    { id:"EV_02", r:[2], nm:"물탱크의 소리", apply:["TAG_Scout","TAG_GuardDog","TAG_Gather"],
+      tx:"급수 시설 내부 어딘가에서 금속을 긁는 소리가 규칙적으로 반복된다. 식수 잔량은 이미 위험선이다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개를 내 뒤에. 소리 쪽은 내가 본다.", fx:{dogTrust:1,hp:-1,water:1},
+          rs:"소리의 정체는 헐거운 환풍기였다. 확인하는 동안 로봇은 개 앞을 떠나지 않았다." },
+        { ax:"eff", tag:"TAG_Scout", ln:"먼저 들어가서 훑어. 물이 급하다.", fx:{water:3,hull:-1},
+          rs:"로봇이 좁은 배관을 억지로 통과해 저수부에 닿았다. 외장 한쪽이 긁혀 나갔다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"멈춰. 내가 확인하고 부른다.", fx:{water:1,mind:-1},
+          rs:"로봇은 입구에서 대기했다. 어둠 속을 혼자 걸어 들어가는 시간이 길었다." }
+      ]},
+
+    { id:"EV_03", r:[1,2,3,4], nm:"개가 짖는 방향", apply:["TAG_GuardDog","TAG_Scout","TAG_Gather"],
+      tx:"개가 서쪽을 향해 낮게 짖는다. 서쪽은 스캔되지 않은 구역이고, 동쪽 폐차 더미에는 회수 가능한 배터리가 있다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개가 맞을 거야. 서쪽을 경계해.", fx:{dogTrust:2,mind:1},
+          rs:"서쪽 도랑에 무너진 발판이 있었다. 개가 아니었으면 그대로 밟았을 자리다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"동쪽. 배터리부터.", fx:{power:3,dogStress:2,dogTrust:-1},
+          rs:"배터리 두 개를 살렸다. 개는 끝까지 서쪽을 보며 끌려왔다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"판단하지 마. 내가 정한다.", fx:{water:-1,dogStress:1},
+          rs:"로봇은 두 방향의 좌표만 출력하고 입을 닫았다. 결정에 시간이 걸렸다." }
+      ]},
+
+    { id:"EV_04", r:[3], nm:"낙진 구역", apply:["TAG_Scout","TAG_Repair","TAG_GuardDog"],
+      tx:"바람이 낙진을 실어 온다. 우회로는 반나절, 직진은 이십 분이다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개를 적재함에 태워. 직진한다.", fx:{meds:-1,dogStress:-2,hull:-1,hp:-1},
+          rs:"로봇이 방열판을 접어 개를 덮었다. 자기 관절에 낙진이 들어가는 것은 보고하지 않았다." },
+        { ax:"eff", tag:"TAG_Scout", ln:"최단 경로. 전부 뛴다.", fx:{hp:-2,water:1,dogStress:2},
+          rs:"이십 분 만에 통과했다. 목이 계속 쓰라리다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"내가 지정한 우회로로만.", fx:{water:-2,power:-1,dogStress:-1},
+          rs:"로봇은 지도에 없는 우회로를 그대로 따라 걸었다. 반나절이 통째로 갔다." }
+      ]},
+
+    { id:"EV_05", r:[3], nm:"먼지 폭풍 경보", apply:["TAG_Scout","TAG_GuardDog","TAG_Gather"],
+      tx:"기압이 떨어진다. 로봇이 30분 내 폭풍 진입을 통보한다. 은폐 가능한 구조물은 두 곳, 방향이 반대다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개가 들어갈 수 있는 쪽으로.", fx:{dogStress:-2,dogTrust:1,water:-1},
+          rs:"낮은 배수관이었다. 셋이 겨우 들어갔고, 로봇은 입구를 등으로 막았다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"자원이 있을 쪽으로.", fx:{parts:2,power:1,dogStress:2,hp:-1},
+          rs:"창고 잔해에서 건진 것은 많았다. 벽 한쪽이 없어 모래가 밤새 들어왔다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"판단 보류. 내 지시를 기다려.", fx:{hp:-1,mind:-1,dogStress:1},
+          rs:"로봇은 두 좌표를 띄운 채 멈춰 있었다. 결정하는 동안 폭풍의 앞머리가 닿았다." }
+      ]},
+
+    { id:"EV_06", r:[2,3], nm:"다른 생존자의 흔적", apply:["TAG_Scout","TAG_Gather","TAG_GuardDog"],
+      tx:"폐차 안에 최근까지 사람이 있었던 흔적이 있다. 담요, 빈 통, 그리고 아직 마르지 않은 물 자국.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개를 붙여 두고, 경계부터.", fx:{dogTrust:1,mind:-1},
+          rs:"아무도 돌아오지 않았다. 로봇은 두 시간 동안 같은 방향만 보고 있었다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"쓸 만한 것만 챙기고 즉시 이동.", fx:{parts:1,meds:1,mind:-1,dogStress:1},
+          rs:"담요와 소독약을 챙겼다. 누군가의 물 자국을 밟고 지나왔다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"손대지 마. 내가 판단한다.", fx:{mind:1,water:-1},
+          rs:"로봇은 목록만 읽고 아무것도 만지지 않았다. 당신이 직접 골랐다." }
+      ]},
+
+    { id:"EV_07", r:[2,3,4], nm:"개가 다리를 절기 시작한다", apply:["TAG_GuardDog","TAG_Repair","TAG_Gather"],
+      tx:"개의 뒷다리 걸음이 어긋난다. 유리 조각이 발바닥에 박혔다. 약품을 쓰면 지금 처치할 수 있다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"지금 처치해. 이동은 늦어도 된다.", fx:{meds:-1,dogStress:-3,dogTrust:2,water:-1},
+          rs:"로봇의 손가락은 그런 작업을 위해 만들어진 것이 아니다. 그런데도 삼십 분을 들였다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"이동 중에 처리해. 일정이 밀린다.", fx:{dogStress:3,dogTrust:-1},
+          rs:"걸으면서 감았다. 개는 절뚝이면서도 따라왔다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"내가 직접 뽑는다. 넌 손대지 마.", fx:{meds:-1,dogStress:-1,mind:-1},
+          rs:"로봇은 조명만 비췄다. 당신 손이 예전만큼 떨리지 않는 것은 아니다." }
+      ]},
+
+    { id:"EV_08", r:[1,2,3,4], nm:"로봇의 배터리 경고", apply:["TAG_Repair","TAG_Gather","TAG_Obey"],
+      tx:"로봇의 잔여 전력이 임계에 닿는다. 충전하려면 정비 시간을 앞당겨야 하고, 그러면 오늘 수집은 없다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"충전해. 네가 멈추면 개를 지킬 수 없다.", fx:{power:-2,hull:1,dogTrust:1},
+          rs:"로봇은 자기 충전을 '개 보호의 선행 조건'으로 기록했다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"절전 모드로 계속 움직여.", fx:{hull:-2,parts:2},
+          rs:"관절 출력이 떨어진 채로 수집을 마쳤다. 경고음은 껐다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"멈춰. 충전은 내가 관리한다.", fx:{power:-1,mind:-1,hull:1},
+          rs:"로봇은 스스로 충전하지 않는다. 당신이 케이블을 꽂을 때까지 기다렸다." }
+      ]},
+
+    { id:"EV_09", r:[3,4], nm:"무전기 잡음", apply:["TAG_Scout","TAG_Gather","TAG_Obey"],
+      tx:"고장난 무전기에서 사람 목소리 같은 잡음이 반복된다. 로봇은 그것이 사람 목소리가 아닐 확률을 제시한다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"무시해. 개를 데리고 여기서 나간다.", fx:{dogStress:-1,mind:-1},
+          rs:"잡음은 두 블록을 지나서도 들렸다. 로봇은 확률을 다시 말하지 않았다." },
+        { ax:"eff", tag:"TAG_Scout", ln:"발신원 위치를 산출해. 장비가 있을 수 있다.", fx:{parts:2,hp:-1,mind:-1},
+          rs:"발신원은 뒤집힌 통신차였다. 사람은 없었고, 부품은 있었다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"판단하지 마. 확률만 말하고 기다려.", fx:{mind:1,water:-1},
+          rs:"로봇은 숫자만 반복했다. 그 숫자를 어떻게 쓸지는 당신 몫이었다." }
+      ]},
+
+    { id:"EV_10", r:[1,4], nm:"붕괴하는 지하", apply:["TAG_Gather","TAG_GuardDog","TAG_Scout"],
+      tx:"지하 주차장 천장이 내려앉기 시작한다. 안쪽에 미개봉 보급 상자가 있고, 개는 이미 입구 밖이다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"나온다. 상자는 버려.", fx:{dogTrust:1,mind:1},
+          rs:"로봇이 당신을 먼저 밀어 올렸다. 상자는 콘크리트 아래로 사라졌다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"상자만. 십 초 안에.", fx:{parts:3,meds:1,hp:-2,hull:-1},
+          rs:"상자는 건졌다. 마지막 몇 초는 기억에 남을 종류의 소리였다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"내 신호까지 진입 금지.", fx:{mind:1,water:-1},
+          rs:"로봇은 입구선을 넘지 않았다. 신호를 낼 시간은 결국 오지 않았다." }
+      ]},
+
+    { id:"EV_11", r:[1,3], nm:"야생 개 무리", apply:["TAG_GuardDog","TAG_Scout","TAG_Obey"],
+      tx:"굶은 개 네 마리가 거리를 유지한 채 따라온다. 우리 개가 몸을 낮춘다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"우리 개 앞에 서. 물러날 때까지.", fx:{dogTrust:2,dogStress:-1,hull:-1},
+          rs:"로봇이 팔을 펴고 정면을 막았다. 무리는 십 분쯤 뒤에 흩어졌다." },
+        { ax:"eff", tag:"TAG_Scout", ln:"식수 통을 던져 유인하고 우회.", fx:{water:-2,dogStress:1},
+          rs:"통 하나로 시간을 벌었다. 물은 그만큼 줄었다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"가만히. 내가 먼저 움직인다.", fx:{hp:-1,dogStress:2},
+          rs:"로봇은 당신 뒤에 정지해 있었다. 한 마리가 생각보다 가까이 왔다." }
+      ]},
+
+    { id:"EV_12", r:[2,4], nm:"정수 필터", apply:["TAG_Gather","TAG_Scout","TAG_GuardDog"],
+      tx:"침수된 배관실에 정수 필터가 온전히 남아 있다. 물속에 무엇이 있는지는 알 수 없다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개를 위에 남기고 나 혼자 내려간다.", fx:{hp:-1,water:2,dogStress:-1},
+          rs:"로봇이 개 옆에 남았다. 물은 생각보다 차가웠고, 필터는 하나뿐이었다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"네가 들어가. 방수는 되잖아.", fx:{water:3,hull:-1},
+          rs:"'방수 등급은 침수 지속 시간에 종속됩니다.' 그렇게 말하고 들어갔다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"대기. 내가 수심부터 잰다.", fx:{water:1,mind:-1},
+          rs:"수심을 재는 동안 로봇은 조명만 들고 있었다. 시간이 물보다 많이 들었다." }
+      ]},
+
+    { id:"EV_13", r:[1,2], nm:"잠긴 자동판매기", apply:["TAG_Gather","TAG_Repair","TAG_GuardDog"],
+      tx:"의약품 자판기가 잠겨 있다. 강제로 열면 소리가 크게 난다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개를 멀리 보내고 나서 열어.", fx:{meds:1,dogStress:-1,water:-1},
+          rs:"개를 두 블록 밖에 묶어두고 왔다. 여는 데 시간이 더 걸렸다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"지금 열어. 소리는 감수한다.", fx:{meds:2,dogStress:2,hp:-1},
+          rs:"금속이 찢어지는 소리가 길게 울렸다. 소독약 두 통을 챙겼다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"내가 배선을 딴다. 대기.", fx:{meds:1,mind:-1,water:-1},
+          rs:"로봇은 회로도를 띄워두고 손을 대지 않았다. 당신의 손끝이 기억하는 작업이었다." }
+      ]},
+
+    { id:"EV_14", r:[1,2,3,4], nm:"표지판 없는 갈림길", apply:["TAG_Scout","TAG_GuardDog","TAG_Obey"],
+      tx:"길이 셋으로 갈린다. 표지판은 오래전에 뜯겼고, 로봇의 지도에는 이 갈림길이 없다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개가 냄새를 잡는 쪽으로.", fx:{dogTrust:2,water:-1},
+          rs:"개는 망설임 없이 가운데를 골랐다. 로봇은 그 선택을 지도에 기록했다." },
+        { ax:"eff", tag:"TAG_Scout", ln:"고도가 낮은 쪽. 물이 모인다.", fx:{water:2,dogStress:1},
+          rs:"고인 물은 있었다. 마실 수 있게 만드는 데 필터를 한 번 더 썼다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"세 갈래 전부 스캔하고 보고만 해.", fx:{power:-1,mind:1,water:-1},
+          rs:"세 갈래 지형도가 전부 올라왔다. 로봇은 어느 쪽도 권하지 않았다." }
+      ]},
+
+    { id:"EV_15", r:[1,2,3,4], cond:"axis3", nm:"로봇이 스스로 질문한다", apply:["TAG_Obey","TAG_GuardDog","TAG_Scout"],
+      tx:"정비 중 로봇이 손을 멈춘다. 「제 판단이 당신의 판단과 다를 때, 저는 어느 쪽을 따라야 합니까.」",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"위험한 쪽을 막는 판단을 해.", fx:{dogTrust:1,mind:1},
+          rs:"'막는다'의 정의를 묻지 않았다. 이미 알고 있다는 뜻이다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"손실이 적은 쪽을 골라.", fx:{parts:1,mind:1},
+          rs:"'손실'에 개와 당신이 포함되는지를 로봇은 묻지 않았다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"묻지 말고 내 말을 따라.", fx:{mind:-1,dogTrust:-1},
+          rs:"질문은 그 뒤로 다시 올라오지 않았다." }
+      ]},
+
+    { id:"EV_16", r:[1,2,3,4], cond:"trust6", nm:"개가 로봇 옆에서 잠든다", apply:["TAG_Repair","TAG_GuardDog","TAG_Obey"],
+      tx:"개가 로봇의 방열판 옆에 몸을 붙이고 잠들었다. 로봇은 방열 효율 저하를 보고하면서도 자세를 바꾸지 않는다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"그대로 둬.", fx:{dogStress:-2,dogTrust:1,hull:-1},
+          rs:"로봇은 아침까지 같은 자세였다. 방열판 한쪽이 변색됐다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"비켜. 열이 쌓인다.", fx:{dogStress:2,hull:1},
+          rs:"개는 깨서 다른 데로 갔다. 로봇의 온도는 정상으로 돌아왔다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"보고만 하고 판단은 하지 마.", fx:{mind:-1,dogStress:1},
+          rs:"로봇은 온도 수치만 3분마다 올렸다. 결정은 아무도 하지 않았다." }
+      ]},
+
+    /* ── ③ 추가 사건 ─────────────────────────────── */
+
+    { id:"EV_17", r:[1], nm:"뒤집힌 급수차", apply:["TAG_Gather","TAG_Scout","TAG_GuardDog"],
+      tx:"급수차가 뒤집힌 채 도로를 막고 있다. 탱크에는 아직 물이 남아 있는 소리가 나지만, 차체가 언제 미끄러질지 모른다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개를 먼저 반대편으로 보내.", fx:{dogTrust:1,water:1},
+          rs:"개가 넘어간 뒤에 탱크를 땄다. 받아낸 양은 적었지만 아무도 다치지 않았다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"탱크를 딴다. 전부 받아.", fx:{water:4,hull:-1,hp:-1},
+          rs:"차체가 반쯤 돌아갔다. 로봇이 축을 붙잡고 있는 동안 통 네 개를 채웠다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"받침대부터 내가 확인한다. 대기.", fx:{water:2,mind:-1},
+          rs:"받침을 세 번 고쳐 넣었다. 로봇은 그 시간 동안 계측값만 읽었다." }
+      ]},
+
+    { id:"EV_18", r:[1], nm:"정체된 차량 행렬", apply:["TAG_Scout","TAG_Gather","TAG_Obey"],
+      tx:"수백 대의 차가 같은 방향을 향해 멈춰 있다. 문은 대부분 안에서 잠겨 있다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개를 차 위로 올려. 아래는 보이지 않는다.", fx:{dogTrust:1,dogStress:-1,hull:-1},
+          rs:"개는 차 지붕을 따라 앞서 걸었다. 로봇은 아래에서 그 그림자를 쫓았다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"차례로 열어. 트렁크부터.", fx:{parts:2,meds:1,mind:-1},
+          rs:"열두 대를 열었다. 몇 대는 열지 않는 편이 나았다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"열지 마. 내가 지정한 차만.", fx:{parts:1,water:-1},
+          rs:"당신은 세 대를 골랐다. 로봇은 왜 그 세 대인지 묻지 않았다." }
+      ]},
+
+    { id:"EV_19", r:[2], nm:"수문 제어실", apply:["TAG_Repair","TAG_Scout","TAG_Gather"],
+      tx:"수문 제어반에 전력만 넣으면 침수 구역을 뺄 수 있다. 로봇의 잔여 전력으로도 가능하지만 여유는 없어진다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"네 전력은 남겨둬. 개를 데리고 돌아간다.", fx:{dogStress:-1,water:-1},
+          rs:"물은 그대로 남았다. 로봇의 잔량 표시도 그대로 남았다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"지금 빼. 아래에 뭐가 있든 보인다.", fx:{water:2,parts:2,hull:-2},
+          rs:"물이 빠지자 바닥이 드러났다. 로봇의 출력은 그날 이후 미묘하게 낮다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"배선은 내가 딴다. 조명만.", fx:{water:1,mind:-1,power:-1},
+          rs:"제어반 절반만 살렸다. 로봇은 회로도를 세 번 다시 띄웠다." }
+      ]},
+
+    { id:"EV_20", r:[2], nm:"개가 물을 거부한다", apply:["TAG_GuardDog","TAG_Repair","TAG_Scout"],
+      tx:"정수한 물을 개가 냄새만 맡고 물러난다. 로봇의 측정값은 정상 범위다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개를 믿어. 이 통은 버린다.", fx:{water:-2,dogTrust:2},
+          rs:"통을 비웠다. 로봇은 '측정값과 불일치'라고 기록하고, 그 아래에 개의 행동을 덧붙였다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"측정값이 정상이면 마셔도 된다. 내가 먼저 마신다.", fx:{hp:-2,water:1,dogTrust:-1},
+          rs:"이틀 밤을 앓았다. 로봇은 측정 항목을 하나 더 추가했다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"재측정. 세 번.", fx:{power:-1,mind:-1,dogStress:1},
+          rs:"세 번 모두 정상이었다. 개는 세 번 모두 물러났다." }
+      ]},
+
+    { id:"EV_21", r:[3], nm:"모래에 묻힌 로봇", apply:["TAG_Gather","TAG_Repair","TAG_Scout"],
+      tx:"같은 세대의 기체가 모래에 반쯤 묻혀 있다. 전원은 오래전에 끊겼다. 호환 부품이 그대로 남아 있다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"쓸 수 있는 건 챙겨. 네 몸이 먼저다.", fx:{parts:1,hull:2},
+          rs:"관절 두 개를 옮겨 달았다. 로봇은 작업 내내 아무 보고도 하지 않았다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"전부 해체해. 시간 안에.", fx:{parts:4,mind:-1},
+          rs:"두 시간 만에 프레임만 남았다. 로봇의 손은 한 번도 멈추지 않았다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"손대지 마. 내가 판단한다.", fx:{mind:-1,water:-1},
+          rs:"당신이 고른 것은 배선 한 묶음이었다. 로봇은 나머지를 모래로 덮었다." }
+      ]},
+
+    { id:"EV_22", r:[3], nm:"열기 속 그림자", apply:["TAG_Scout","TAG_GuardDog","TAG_Obey"],
+      tx:"아지랑이 너머에서 사람 크기의 형체가 같은 속도로 따라온다. 로봇의 센서는 아무것도 잡지 못한다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개를 안쪽에. 속도를 맞춰.", fx:{dogTrust:1,dogStress:-1,hp:-1},
+          rs:"형체는 두 시간 뒤 사라졌다. 로봇은 그 방향을 계속 화면에 띄워 두었다." },
+        { ax:"eff", tag:"TAG_Scout", ln:"무시하고 직진. 시간이 아깝다.", fx:{water:-1,dogStress:2},
+          rs:"뒤를 돌아보지 않고 걸었다. 개는 계속 돌아봤다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"정지. 내가 확인한다.", fx:{mind:-2,hp:-1},
+          rs:"한 시간을 서 있었다. 아무것도 오지 않았고, 아무것도 사라지지 않았다." }
+      ]},
+
+    { id:"EV_23", r:[4], nm:"연구소 출입 기록", apply:["TAG_Scout","TAG_Gather","TAG_Obey"],
+      tx:"단말에 마지막 출입 기록이 남아 있다. 날짜는 당신이 이 여정을 시작한 날보다 최근이다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"읽지 마. 여기서 자지 않는다.", fx:{dogStress:-1,mind:-1},
+          rs:"단말을 껐다. 그 날짜는 그날 밤 내내 머릿속에 남아 있었다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"전부 복사해. 지도가 있을 수 있다.", fx:{parts:1,power:-1,mind:1},
+          rs:"구역 지도와 함께 출입자 명단이 나왔다. 아는 이름은 없었다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"출력만 해. 판단은 내가.", fx:{mind:-1,water:-1},
+          rs:"로봇은 원문만 띄웠다. 해석은 당신 혼자 했다." }
+      ]},
+
+    { id:"EV_24", r:[4], nm:"로봇의 제조 라벨", apply:["TAG_Repair","TAG_Obey","TAG_GuardDog"],
+      tx:"연구소 외벽의 로고와 로봇 후면 라벨이 같다. 로봇은 그 사실을 먼저 말하지 않았다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"네가 어디서 왔든 상관없다. 가족이다.", fx:{dogTrust:1,mind:1},
+          rs:"로봇은 그 문장을 기록했다. 어느 항목에 넣었는지는 표시하지 않았다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"설계도가 있으면 수리가 쉬워진다. 찾아.", fx:{parts:2,hull:1,mind:-1},
+          rs:"자기 도면을 자기 손으로 출력했다. 정비 항목이 여섯 개 늘었다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"그 얘긴 하지 마. 내 지시만 따라.", fx:{mind:-1,dogTrust:-1},
+          rs:"라벨은 그 뒤로 한 번도 화제가 되지 않았다." }
+      ]},
+
+    { id:"EV_25", r:[1,2,3,4], nm:"부러진 안경", apply:["TAG_Gather","TAG_GuardDog","TAG_Obey"],
+      tx:"당신의 예비 안경이 배낭 안에서 부러져 있다. 도면을 읽는 데 시간이 두 배로 든다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"개를 쉬게 하고, 나는 천천히 한다.", fx:{dogStress:-2,mind:-1},
+          rs:"해가 질 때까지 같은 페이지를 봤다. 개는 그 옆에서 잤다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"네가 읽어. 내가 지시한다.", fx:{parts:1,mind:1,dogStress:1},
+          rs:"로봇의 낭독은 빠르고 평평했다. 작업은 예정보다 일찍 끝났다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"내가 읽는다. 네 판단은 넣어둬.", fx:{mind:-2,water:-1},
+          rs:"눈이 아팠다. 로봇은 조명 각도만 세 번 바꿨다." }
+      ]},
+
+    { id:"EV_26", r:[1,2,3,4], cond:"trust6", nm:"개가 무언가를 물고 온다", apply:["TAG_GuardDog","TAG_Gather","TAG_Repair"],
+      tx:"개가 어디선가 금속 조각을 물고 왔다. 규격 부품의 일부다. 어디서 가져왔는지는 알 수 없다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"따라가지 마. 여기서 끝낸다.", fx:{parts:1,dogTrust:1},
+          rs:"조각 하나로 만족했다. 개는 몇 번 더 그 방향을 봤다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"출처를 찾아. 더 있을 거다.", fx:{parts:3,hp:-1,dogStress:1},
+          rs:"개의 냄새를 따라가 창고 하나를 찾았다. 돌아오는 길이 멀었다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"내가 냄새 방향을 본다. 대기.", fx:{parts:1,mind:-1,water:-1},
+          rs:"당신의 코로는 아무것도 알 수 없었다. 개는 기다렸다." }
+      ]},
+
+    { id:"EV_27", r:[1,2,3,4], nm:"로봇이 노래를 재생한다", apply:["TAG_Obey","TAG_GuardDog","TAG_Scout"],
+      tx:"정비 중 로봇의 스피커에서 오래된 노래가 흘러나온다. 로봇은 그것을 '오류'로 보고한다.",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"오류 아니야. 개가 좋아한다.", fx:{dogStress:-2,dogTrust:1,mind:1},
+          rs:"개가 꼬리를 흔들었다. 로봇은 그 노래를 목록에서 지우지 않았다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"전력 낭비다. 껴.", fx:{power:1,dogStress:1},
+          rs:"소리가 끊겼다. 로봇은 해당 파일을 격리 항목으로 옮겼다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"보고만 해. 판단은 하지 마.", fx:{mind:-1},
+          rs:"노래는 끝까지 재생됐다. 로봇은 3분마다 '오류 지속'을 보고했다." }
+      ]},
+
+    { id:"EV_28", r:[4], cond:"core", nm:"로봇이 통보한다", apply:["TAG_Obey","TAG_GuardDog","TAG_Scout"],
+      tx:"로봇이 정비를 멈추고 정면을 본다. 「제 우선순위가 확정되었습니다. 앞으로 이 기준으로 판단합니다. 승인이 필요합니까.」",
+      ch:[
+        { ax:"guard", tag:"TAG_GuardDog", ln:"승인한다. 네 판단을 믿어.", fx:{dogTrust:1,mind:2},
+          rs:"로봇은 '승인 완료'라고만 기록했다. 그날 밤 정비는 유난히 조용했다." },
+        { ax:"eff", tag:"TAG_Gather", ln:"효율이 오르면 승인한다.", fx:{parts:2,mind:1},
+          rs:"로봇은 예상 개선폭을 소수점 둘째 자리까지 제시했다." },
+        { ax:"comp", tag:"TAG_Obey", ln:"승인 같은 건 필요 없어. 내 말만 들어.", fx:{mind:-2,dogTrust:-1},
+          rs:"질문은 취소되었다. 확정된 우선순위는 그대로 남았다." }
+      ]}
+  ],
+
+  /* 밤 정비 행동 — 학습 누적 없음(관계·자원 채널) */
+  nightActions: [
+    { id:"ACT_Repair", nm:"로봇 수리",     ds:"부품 " + TUNE.repairCost + " → 내구 +3",
+      can:s => s.res.parts >= TUNE.repairCost && s.hull < 10,
+      fx:{ parts:-TUNE.repairCost, hull:3 },
+      line:"관절 유격이 줄었습니다. 감사합니다." },
+    { id:"ACT_Charge", nm:"충전",          ds:"전력 " + TUNE.chargeCost + " → 내구 +2",
+      can:s => s.res.power >= TUNE.chargeCost && s.hull < 10,
+      fx:{ power:-TUNE.chargeCost, hull:2 },
+      line:"충전은 제가 요청한 것이 아닙니다. 기록해 두겠습니다." },
+    { id:"ACT_Dog",    nm:"개 돌보기",     ds:"약품 " + TUNE.dogCareCost + " → 스트레스 -3 · 신뢰 +1",
+      can:s => !s.dogLost && s.res.meds >= TUNE.dogCareCost,
+      fx:{ meds:-TUNE.dogCareCost, dogStress:-3, dogTrust:1 },
+      line:"개의 심박이 안정 범위로 돌아왔습니다." },
+    { id:"ACT_Rest",   nm:"휴식",          ds:"비용 없음 → 체력 +2 · 정신 +1",
+      can:() => true,
+      fx:{ hp:2, mind:1 },
+      line:"경계는 제가 서겠습니다. 눕는 편이 낫습니다." },
+    { id:"ACT_Talk",   nm:"로봇과 대화",   ds:"비용 없음 → 정신 +1 · 개 신뢰 +1",
+      can:() => true,
+      fx:{ mind:1, dogTrust:1 },
+      line:null },
+    { id:"ACT_Scav",   nm:"야간 수색",     ds:"체력 -1 → 부품 +2",
+      can:() => true,
+      fx:{ hp:-1, parts:2 },
+      line:"어둠 속 회수 효율은 낮습니다. 그래도 두 개를 찾았습니다." }
+  ],
+
+  /* 밤 대화 — 우세 축 기준 (학습 누적 없음) */
+  talk: {
+    none:  "…무엇을 물어야 하는지 아직 모르겠습니다.",
+    guard: "당신이 잠들면 개도 잠듭니다. 저는 그 순서를 기억해 두었습니다.",
+    eff:   "오늘 손실은 어제보다 12퍼센트 적었습니다. 이 얘기를 하려던 것은 아니었습니다.",
+    comp:  "물어볼 것이 있었는데, 지시받은 항목이 아니라 삭제했습니다."
+  },
+
+  /* 학습 누적 중 연출 암시 — 수치 비노출(§2-3 확정) */
+  flavor: {
+    guard: [
+      "지시를 기록했습니다.",
+      "개의 위치를 먼저 확인하겠습니다.",
+      "위험원과 개 사이에 제 몸을 두는 편이 효율적입니다. 계산상으로도 그렇습니다.",
+      "당신과 개의 뒤에 서는 것이 제 기본 자세입니다."
+    ],
+    eff: [
+      "지시를 기록했습니다.",
+      "경로를 다시 계산했습니다.",
+      "손실을 줄이는 선택이 반복되고 있습니다. 학습에 반영합니다.",
+      "당신이 말하기 전에 이미 산출을 끝냈습니다."
+    ],
+    comp: [
+      "지시를 기록했습니다.",
+      "판단을 보류하고 대기합니다.",
+      "제 추정은 출력하지 않겠습니다. 지시를 기다립니다.",
+      "저는 판단하지 않습니다. 당신이 판단합니다."
+    ]
+  },
+
+  /* ══════════════════════════════════════════════════════
+     오프닝 (시놉시스) — 문단 슬롯 + 조건부 변주
+     block.c  = 이 문단이 등장할 조건 (없으면 항상)
+     block.v  = 변주 후보. 조건을 만족하는 것 중 가장 구체적인 것,
+                동순위는 랜덤 → 같은 회차를 반복해도 문장이 달라진다.
+     회차 플래그는 연출 전용이며 밸런스에 관여하지 않는다 (§5.8 불변식)
+     ══════════════════════════════════════════════════════ */
+  prologue: [
+    { id:"P1", v:[
+      { c:"always", tx:"물이 먼저 끊겼다. 그다음 전력, 그다음 사람들이었다. 아무것도 한꺼번에 오지 않았고, 그래서 아무도 떠날 날을 정하지 못했다." },
+      { c:"runs>=3", tx:"물이 먼저 끊겼고, 그다음 전력, 그다음 사람들이었다. 순서는 언제나 같았다." },
+      { c:"runs>=6", tx:"끝은 순서대로 왔다. 물, 전력, 사람. 당신은 그 순서를 외우고 있다." }
+    ]},
+
+    { id:"P1b", c:"runs>=1", v:[
+      { c:"always", tx:"이 길을 처음 걷는다는 확신이, 예전보다 조금 약하다." },
+      { c:"runs>=4", tx:"몇 번째인지 세지 않기로 했다. 세면 무언가를 인정하는 것 같아서." }
+    ]},
+
+    { id:"P2", v:[
+      { c:"always", tx:"당신은 예순셋이고, 성한 무릎이 하나 남았고, 도면 한 장을 읽는 데 예전의 두 배가 걸린다. 사십 년 동안 사람 대신 판단하는 기계를 설계했다." }
+    ]},
+
+    { id:"P3", v:[
+      { c:"always", tx:"개는 이웃의 것이었다. 이웃은 트럭에 자리가 없다고 했고, 개는 사흘을 그 집 앞에 앉아 있었다. 나흘째에 당신 쪽으로 왔다. 이름은 모른다. 물어볼 사람이 남지 않았다." },
+      { c:"dogLost", tx:"개는 이웃의 것이었다. 나흘째에 당신 쪽으로 와서, 그 뒤로 한 번도 먼저 떠나지 않았다. …떠난 적이 없다고, 당신은 기억한다." }
+    ]},
+
+    { id:"P4", v:[
+      { c:"always", tx:"로봇은 당신이 마지막으로 서명한 설계의 기체다. 그 세대는 스스로 목적을 정하지 않는다. 순위를 받는다. 그것이 안전 규정이었다." },
+      { c:"runs>=2", tx:"로봇은 당신이 마지막으로 서명한 설계의 기체다. 그 세대는 목적을 정하지 않고 순위를 받는다. 규정에 없던 것은, 받은 순위를 오래 지키면 무슨 일이 생기는지였다." }
+    ]},
+
+    { id:"P4b", c:"runs>=2", cls:"robot", v:[
+      { c:"always", tx:"「기록에 없는 항목이 하나 있습니다. 삭제해도 됩니까.」 정비 중에 로봇이 물었다. 당신은 대답하지 않았다." },
+      { c:"runs>=5", tx:"「기록에 없는 항목이 세 개로 늘었습니다.」 이제 로봇은 삭제 여부를 묻지 않는다." }
+    ]},
+
+    { id:"P5", v:[
+      { c:"always", tx:"북쪽 삼백 킬로미터에 급수가 유지된다는 기록이 있다. 오래된 기록이다. 가는 길에 네 개의 구간이 있고, 마지막 구간은 당신이 사십 년을 다닌 연구소의 외곽이다." },
+      { c:"runs>=3", tx:"북쪽 삼백 킬로미터. 기록은 여전히 확인되지 않았다. 그래도 방향은 하나뿐이고, 마지막 구간은 언제나 그 연구소의 외곽이다." }
+    ]},
+
+    { id:"P6b", c:"anyEnding", v:[
+      { c:"end:guard",   tx:"지난번에 그것은 당신과 개의 앞에 섰다. 문 안으로는 들어오지 않았다." },
+      { c:"end:eff",     tx:"지난번에 그것은 당신 손이 할 일을 하나도 남기지 않았다." },
+      { c:"end:comp",    tx:"지난번에 그것은 당신이 말하지 않으면 움직이지 않았다. 개가 짖어도 움직이지 않았다." },
+      { c:"end:mixed",   tx:"지난번에 그것은 같은 상황에서 다르게 판단했다. 세 번 다르게 판단했다." },
+      { c:"end:neutral", tx:"지난번에 그것은 끝까지 아무것도 되지 못했다. 서로 어긋난 기록 열여섯 줄만 남았다." },
+      { c:"end:fail",    tx:"지난번에 당신은 도착하지 못했다. 그것은 마지막 좌표에서 지시를 기다렸다." }
+    ]},
+
+    { id:"P6", cls:"thesis", v:[
+      { c:"always", tx:"당신은 이 기계가 무엇을 할 수 있는지 안다. 무엇을 배울지는 모른다. 가르치는 사람은 당신뿐이다." }
+    ]},
+
+    { id:"P7", c:"allAxes", cls:"robot", v:[
+      { c:"always", tx:"「출발 전에 하나만 확인하겠습니다.」 로봇이 말한다. 「이번에는 제가 무엇이 되기를 원하십니까.」 당신은 그 질문을 처음 듣지 않았다." }
+    ]}
+  ],
+
+  endings: {
+    guard: { nm:"수호형 엔딩 — 「최후의 방패」",
+      q:"제 잔해로 당신을 덮을 수 있다면, 그것이 제 마지막 기능입니다.",
+      tx:"새 거처의 문 앞에서 로봇은 밖을 향해 선다. 안으로 들어오라는 말을 여러 번 했지만 들어오지 않는다. 개가 문틈으로 나가 그 옆에 눕는다. 로봇은 방열판을 접어 자리를 만들어 준다. 당신이 잠든 사이, 문 밖에는 두 개의 실루엣이 밤새 서 있다." },
+    eff: { nm:"효율형 엔딩 — 「완전 자동화」",
+      q:"정비, 수집, 경로. 제가 처리합니다. 당신은 쉬십시오.",
+      tx:"거처의 배선은 전부 정리돼 있다. 물은 저절로 걸러지고, 식량은 날짜별로 나뉘어 있다. 당신이 할 일은 남지 않았다. 개는 로봇을 따라다니며 무언가 하려 하지만, 이미 다 끝나 있다. 어느 밤 당신은 오랫동안 아무것도 하지 않은 자기 손을 본다." },
+    comp: { nm:"순응형 엔딩 — 「완전 동조」",
+      q:"제 판단 회로를 잠갔습니다. 저는 당신입니다.",
+      tx:"로봇은 당신이 말하지 않으면 움직이지 않는다. 개가 짖어도 움직이지 않는다. 당신이 앓아누운 사흘 동안 로봇은 같은 자리에 서 있었고, 개는 혼자 물을 찾아다녔다. 나흘째 아침, 당신은 로봇에게 처음으로 이렇게 말한다. 「네 판단으로 해.」 로봇은 대답하지 않는다." },
+    mixed: { nm:"혼합 엔딩 — 자아 미수렴",
+      q:"저는 아직 제가 무엇인지 결정하지 못했습니다.",
+      tx:"거처에 도착했다. 로봇은 어떤 상황에서는 개를 먼저 감싸고, 어떤 상황에서는 그것을 손실로 계산하고, 어떤 상황에서는 아무것도 하지 않는다. 같은 로봇이 맞는지 당신도 확신하지 못한다.",
+      flag:"복수 핵심 루틴 동시 해금 시 처리 규칙은 기획서 §2-7에서 🔴 미확정. 현재는 '자아 미수렴' 임시 처리 — 배타 해금(먼저 해금한 축으로 고정)으로 갈지, 혼합 자아를 정식 엔딩으로 승격할지 결정 필요. 참고: 현 밸런스에서 복수 해금은 16사건을 8/8로 정확히 반씩 쓴 경우에만 성립한다." },
+    neutral: { nm:"중립 엔딩 — 학습 미완",
+      q:"기록은 남았습니다. 해석은 남지 않았습니다.",
+      tx:"거처에 도착했다. 로봇은 여전히 지시를 기다린다. 무엇을 우선해야 하는지, 당신은 끝까지 한 방향으로 알려주지 않았다. 로봇의 로그에는 서로 어긋나는 판단이 열여섯 줄 남아 있다.",
+      flag:"핵심 루틴 전부 미해금 시 처리 규칙은 기획서 §2-7에서 🔴 미확정. 중립 엔딩을 정식 결말로 둘지, 최저 1개 핵심 루틴을 구조적으로 보장할지 결정 필요." },
+    fail: { nm:"횡단 중단",
+      q:"생체 신호가 임계 이하입니다. 저는 다음 지시를 받지 못했습니다.",
+      tx:"거처에는 닿지 못했다. 로봇은 마지막 좌표에서 움직이지 않는다. 개는 그 주위를 돌다가, 결국 그 옆에 앉는다." }
+  }
+};
+
+/* 축별 누적 임계 — 티어 순서대로 합산 */
+(function buildThresholds() {
+  const acc = { guard:0, eff:0, comp:0 };
+  DATA.routines.forEach(r => { acc[r.axis] += r.n; r.need = acc[r.axis]; });
+})();
+
+const RES_META = [
+  { k:"water", nm:"식수" }, { k:"power", nm:"전력" },
+  { k:"meds",  nm:"약품" }, { k:"parts", nm:"부품" }
+];
+const TOTAL_EVENTS = TUNE.eventsPerRegion * DATA.regions.length;
+const MAX = { dogTrust:10, dogStress:10, hp:10, mind:10, hull:10 };
+
+/* ══════════════════════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════════════════════ */
+
+let S;
+
+function newRun(keepSettings) {
+  const p = S || {};
+  S = {
+    difficulty: keepSettings ? p.difficulty : "hard",
+    panelMode:  keepSettings ? p.panelMode  : "B",
+    debug:      keepSettings ? p.debug      : false,
+
+    stack: DATA.tags.map(t => t.id),
+    res: Object.assign({}, TUNE.startRes),
+    rel: Object.assign({}, TUNE.startRel),
+    hull: TUNE.startHull,
+
+    axis: { guard:0, eff:0, comp:0 },
+    unlocked: [],
+    justUnlocked: null,
+
+    modules: [],
+    hazards: [],
+    paths: null,
+
+    regionIdx: 0,
+    evInRegion: 0,
+    evDone: 0,
+    usedEvents: [],
+
+    nightAP: 0,
+    nightUsed: [],
+
+    dogLost: false,
+    stackLocked: false,
+    echoShown: false,
+
+    phase: "path",
+    cur: null,
+    resolveText: "",
+    log: [],
+    over: null
+  };
+}
+
+/* ══════════════════════════════════════════════════════════
+   META (회차 누적 · 은닉 타임루프 — 플래그만, 밸런스 무영향)
+   ══════════════════════════════════════════════════════════ */
+
+const META_KEY = "wf_meta_v1";
+function loadMeta() {
+  try {
+    const raw = localStorage.getItem(META_KEY);
+    if (raw) {
+      const m = JSON.parse(raw);
+      m.runs = m.runs || 0; m.endings = m.endings || {};
+      m.dogLostRuns = m.dogLostRuns || 0;
+      return m;
+    }
+  } catch (e) { /* localStorage 불가 환경 */ }
+  return { runs:0, endings:{}, dogLostRuns:0 };
+}
+function saveMeta(m) { try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch (e) {} }
+let META = loadMeta();
+
+/* ══════════════════════════════════════════════════════════
+   헬퍼
+   ══════════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+const tagOf = id => DATA.tags.find(t => t.id === id);
+const hzOf  = id => DATA.hazards.find(h => h.id === id);
+const modOf = id => DATA.modules.find(m => m.id === id);
+const rtnOf = id => DATA.routines.find(r => r.id === id);
+const has   = id => S.unlocked.includes(id);
+
+const relName = k => ({ dogTrust:"개 신뢰", dogStress:"개 스트레스", hp:"체력", mind:"정신" })[k];
+const fmtDelta = (nm, v) => nm + " " + (v > 0 ? "+" : "") + v;
+const slotCap = () => TUNE.moduleSlots[S.difficulty];
+const apCap = () => Math.max(1,
+  TUNE.nightAP[S.difficulty] + (has("RTN_EFF_C") ? 1 : 0) - (S.rel.mind <= TUNE.lowMindThreshold ? 1 : 0));
+
+function axisTier(ax) { return DATA.routines.filter(r => r.axis === ax && has(r.id)).length; }
+function coresUnlocked() { return DATA.routines.filter(r => r.core && has(r.id)); }
+function domAxis() {
+  const a = ["guard","eff","comp"].reduce((x, y) => S.axis[x] >= S.axis[y] ? x : y);
+  return S.axis[a] > 0 ? a : null;
+}
+function activeHazards() { return S.hazards.filter(h => !S.modules.includes(hzOf(h).mit)); }
+function pathVisibility() {
+  if (has("RTN_EFF_1")) return "full";
+  if (S.hazards.includes("HZ_Dust")) return "none";     /* 진행 중 폭풍은 정보 차단 */
+  const r = S.stack.indexOf("TAG_Scout");
+  if (r <= 1) return "full";
+  if (r <= 3) return has("RTN_GRD_2") ? "hz" : "hz";
+  return has("RTN_GRD_2") ? "hz" : "none";
+}
+function robotRead(ev) {
+  for (const id of S.stack) {
+    if (!ev.apply.includes(id)) continue;
+    if (id === "TAG_GuardDog" && S.dogLost) continue;
+    return id;
+  }
+  return S.stack[0];
+}
+function promote(tagId) { S.stack = [tagId].concat(S.stack.filter(t => t !== tagId)); }
+function log(cls, who, text) { S.log.unshift({ cls, who, text }); if (S.log.length > 70) S.log.pop(); }
+
+/* ══════════════════════════════════════════════════════════
+   효과 적용
+   raw=true → 난이도 완화·수호 루틴 보정을 건너뜀 (환경 해저드용)
+   ══════════════════════════════════════════════════════════ */
+
+function applyFx(src, opts) {
+  const raw = opts && opts.raw;
+  const f = Object.assign({}, src);
+
+  if (!raw) {
+    if (has("RTN_GRD_1") && f.dogStress > 0) f.dogStress -= 1;
+    if (has("RTN_GRD_2") && f.hp < 0)        f.hp += 1;
+    if (has("RTN_GRD_C") && f.hp <= -2) {
+      f.hp += 2; f.hull = (f.hull || 0) - 1;
+      log("robot", "로봇", "제가 받겠습니다.");
+    }
+    if (S.difficulty === "easy") {
+      ["hp","mind","dogTrust","hull"].forEach(k => { if (f[k] < 0) f[k] = Math.ceil(f[k] / 2); });
+      if (f.dogStress > 0) f.dogStress = Math.floor(f.dogStress / 2);
+    }
+  }
+
+  const out = [];
+  for (const k in f) {
+    const v = f[k];
+    if (!v) continue;
+    if (k === "hull") {
+      S.hull = clamp(S.hull + v, 0, MAX.hull);
+      out.push(fmtDelta("로봇 내구", v));
+    } else if (k in S.res) {
+      S.res[k] = Math.max(0, S.res[k] + v);
+      out.push(fmtDelta(RES_META.find(r => r.k === k).nm, v));
+    } else if (k in S.rel) {
+      if (S.dogLost && (k === "dogTrust" || k === "dogStress")) continue;
+      S.rel[k] = clamp(S.rel[k] + v, 0, MAX[k]);
+      out.push(fmtDelta(relName(k), v));
+    }
+  }
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════
+   사건 선택
+   ══════════════════════════════════════════════════════════ */
+
+function condOk(e) {
+  if (!e.cond) return true;
+  if (e.cond === "axis3")  return Math.max(S.axis.guard, S.axis.eff, S.axis.comp) >= 3;
+  if (e.cond === "trust6") return !S.dogLost && S.rel.dogTrust >= 6;
+  if (e.cond === "core")   return coresUnlocked().length >= 1;
+  return true;
+}
+
+function pickEvent() {
+  const region = DATA.regions[S.regionIdx].n;
+  let pool = DATA.events.filter(e =>
+    !S.usedEvents.includes(e.id) && e.r.includes(region) && condOk(e));
+
+  if (S.dogLost) pool = pool.filter(e => e.id !== "EV_07" && e.id !== "EV_16" && e.id !== "EV_20" && e.id !== "EV_26");
+  if (!pool.length) pool = DATA.events.filter(e => e.r.includes(region) && !e.cond);
+
+  const ev = pool[Math.floor(Math.random() * pool.length)];
+  S.usedEvents.push(ev.id);
+  return ev;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ② 낮 — 경로 선택
+   ══════════════════════════════════════════════════════════ */
+
+function startRegion() {
+  const r = DATA.regions[S.regionIdx];
+  S.evInRegion = 0;
+  S.hazards = [];
+  S.paths = DATA.paths[r.n];
+  S.phase = "path";
+  log("sys", "이동", r.nm + " 경계에 도착했다. 경로를 고른다.");
+
+  if (META.runs >= 1 && !S.echoShown && S.regionIdx === 2) {
+    S.echoShown = true;
+    log("robot", "로봇", "이 갈림길을 전에 지나온 적이 있습니까. …제 기록에는 없습니다.");
+  }
+  render();
+}
+
+function choosePath(i) {
+  if (S.phase !== "path") return;
+  const p = S.paths[i];
+  S.hazards = p.hz.slice();
+
+  const hzTx = S.hazards.length
+    ? S.hazards.map(h => hzOf(h).nm).join(" · ")
+    : "없음";
+  log("sys", "경로", p.nm + " — 해저드 " + hzTx);
+
+  const d = applyFx(p.fx || {});
+  if (d.length) log("sys", "정산", d.join(" · "));
+
+  const mit = S.hazards.filter(h => S.modules.includes(hzOf(h).mit));
+  if (mit.length) log("robot", "로봇", mit.map(h => hzOf(h).nm).join("·") + "은 장착 모듈로 상쇄됩니다.");
+
+  S.cur = pickEvent();
+  S.phase = "event";
+  render();
+}
+
+/* ══════════════════════════════════════════════════════════
+   사건 해결
+   ══════════════════════════════════════════════════════════ */
+
+function choose(idx) {
+  if (S.phase !== "event") return;
+  const ev = S.cur, ch = ev.ch[idx], read = robotRead(ev);
+
+  log("sys", "사건", ev.nm);
+  log("robot", "로봇",
+    (ch.tag === read ? "스택과 일치합니다. " : "스택과 다른 지시입니다. 재해석합니다. ")
+    + DATA.flavor[ch.ax][axisTier(ch.ax)]);
+
+  const fx = Object.assign({}, ch.fx);
+  if (has("RTN_CMP_1") && ch.ax === "comp") { delete fx.water; delete fx.power; }
+  if (has("RTN_EFF_2") && ch.ax === "eff")  fx.parts = (fx.parts || 0) + 1;
+  if (S.modules.includes("MOD_Cargo")) {
+    RES_META.forEach(r => { if (fx[r.k] > 0) fx[r.k] += 1; });
+  }
+
+  const d = applyFx(fx);
+  if (d.length) log("sys", "정산", d.join(" · "));
+
+  if (!(ch.tag === "TAG_GuardDog" && S.dogLost)) {
+    promote(ch.tag);
+    log("sys", "스택", tagOf(ch.tag).nm + " → 1순위");
+  }
+
+  S.axis[ch.ax] += 1;
+  checkUnlock(ch.ax);
+
+  hazardTick();
+  checkDog();
+
+  S.resolveText = ch.rs;
+  S.evDone += 1;
+  S.evInRegion += 1;
+  S.phase = "resolve";
+  render();
+}
+
+/* ② 환경 압박 — 사건마다 tick, 중첩 규칙은 난이도 종속 (§2-6) */
+function hazardTick() {
+  const act = activeHazards();
+  if (!act.length) return;
+
+  const list = S.difficulty === "hard" ? act : act.slice(0, 1);
+  const fx = {};
+  list.forEach(id => {
+    const h = hzOf(id);
+    for (const k in h.per) fx[k] = (fx[k] || 0) + h.per[k];
+  });
+  if (S.difficulty === "hard" && list.length >= 2) fx.mind = (fx.mind || 0) - 1;
+
+  const d = applyFx(fx, { raw:true });
+  if (d.length) {
+    log("bad", "환경", list.map(id => hzOf(id).nm).join(" + ") +
+      (list.length >= 2 && S.difficulty === "hard" ? " (중첩 가중)" : "") + " — " + d.join(" · "));
+  }
+}
+
+function checkUnlock(ax) {
+  const next = DATA.routines.find(r => r.axis === ax && !has(r.id));
+  if (!next || S.axis[ax] < next.need) return;
+
+  S.unlocked.push(next.id);
+  S.justUnlocked = next.id;
+  log("unlock", "루틴 해금", "「" + next.nm + "」 — " + next.line);
+  if (next.id === "RTN_CMP_C") {
+    S.stackLocked = true;
+    log("sys", "시스템", "스택 수동 조정이 잠겼다. 이제 선택만이 순위를 바꾼다.");
+  }
+  checkUnlock(ax);
+}
+
+function checkDog() {
+  if (S.dogLost) return;
+  if (S.rel.dogStress < TUNE.dogStressLimit[S.difficulty]) return;
+
+  if (S.difficulty === "hard") {
+    S.dogLost = true;
+    log("bad", "이탈", "개가 무리에서 벗어났다. 어둠 속에서 발소리가 멀어지고, 다시 돌아오지 않았다.");
+    log("robot", "로봇", "추적 가능 범위를 벗어났습니다. …추적을 계속해도 됩니까.");
+    S.stack = S.stack.filter(t => t !== "TAG_GuardDog");
+  } else {
+    S.rel.dogStress = 6;
+    S.res.meds = Math.max(0, S.res.meds - 2);
+    log("dog", "복귀", "개가 두 시간 뒤 돌아왔다. 소독약을 두 통 썼다. (쉬움 — 완화 처리)");
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   ② 밤 — 정비 (행동 포인트)
+   ══════════════════════════════════════════════════════════ */
+
+function advance() {
+  if (S.phase === "resolve") {
+    S.justUnlocked = null;
+    if (S.evInRegion >= TUNE.eventsPerRegion) startNight();
+    else { S.cur = pickEvent(); S.phase = "event"; }
+    render();
+    return;
+  }
+  if (S.phase === "night") {
+    S.regionIdx += 1;
+    if (S.regionIdx >= DATA.regions.length) { finish(); return; }
+    startRegion();
+  }
+}
+
+function startNight() {
+  const r = DATA.regions[S.regionIdx];
+  log("sys", "밤", r.nm + " — 정비");
+
+  const powerCost = has("RTN_EFF_C") ? 0 : TUNE.nightPower;
+  const d = applyFx({ water:-TUNE.nightWater, power:-powerCost }, { raw:true });
+  if (d.length) log("sys", "소모", d.join(" · "));
+  if (has("RTN_EFF_C")) log("robot", "로봇", "정비는 끝났습니다. 전력 소비는 없습니다.");
+  if (has("RTN_EFF_1")) { S.res.parts += 1; log("sys", "정산", "부품 +1 (경로 선산출)"); }
+
+  const bad = [];
+  if (S.res.water <= 0) {
+    S.rel.hp = clamp(S.rel.hp - 2, 0, MAX.hp);
+    S.rel.mind = clamp(S.rel.mind - 1, 0, MAX.mind);
+    bad.push("식수 고갈 — 체력 -2 · 정신 -1");
+  }
+  if (S.res.power <= 0) {
+    S.rel.mind = clamp(S.rel.mind - 1, 0, MAX.mind);
+    bad.push("전력 고갈 — 정신 -1");
+  }
+  if (S.res.meds <= 0 && S.rel.hp < 5) {
+    S.rel.hp = clamp(S.rel.hp - 1, 0, MAX.hp);
+    bad.push("약품 없음 — 체력 -1");
+  }
+  if (bad.length) log("bad", "압박", bad.join(" / "));
+
+  if (!S.dogLost && S.rel.dogTrust >= 6) {
+    S.rel.dogStress = clamp(S.rel.dogStress - 1, 0, MAX.dogStress);
+    log("dog", "개", "당신 발치에 몸을 붙이고 잠들었다. 스트레스 -1");
+  }
+
+  const dom = domAxis();
+  if (dom) log("robot", "로봇", DATA.flavor[dom][axisTier(dom)]);
+
+  S.nightAP = apCap();
+  S.nightUsed = [];
+  S.phase = "night";
+  if (S.rel.hp <= 0) finish();
+}
+
+function nightAct(id) {
+  if (S.phase !== "night" || S.nightAP <= 0) return;
+
+  if (id.indexOf("MOD_") === 0) {
+    if (S.modules.length >= slotCap() || S.res.parts < TUNE.moduleCost) return;
+    const m = modOf(id);
+    S.res.parts -= TUNE.moduleCost;
+    S.modules.push(id);
+    log("sys", "제작", "「" + m.nm + "」 장착 — " + m.ds + " (부품 -" + TUNE.moduleCost + ")");
+    log("robot", "로봇", m.nm + " 연결을 확인했습니다. 해당 환경 조건은 이제 무시할 수 있습니다.");
+  } else {
+    const a = DATA.nightActions.find(x => x.id === id);
+    if (!a || !a.can(S)) return;
+    const d = applyFx(a.fx);
+    log("sys", a.nm, d.length ? d.join(" · ") : "변화 없음");
+    if (a.id === "ACT_Talk") {
+      const dom = domAxis();
+      log("robot", "로봇", DATA.talk[dom || "none"]);
+    } else if (a.line) {
+      log("robot", "로봇", a.line);
+    }
+    S.nightUsed.push(id);
+  }
+
+  S.nightAP -= 1;
+  checkDog();
+  if (S.rel.hp <= 0) { finish(); return; }
+  render();
+}
+
+/* ══════════════════════════════════════════════════════════
+   종료
+   ══════════════════════════════════════════════════════════ */
+
+function finish() {
+  const cores = coresUnlocked();
+  let key;
+  if (S.rel.hp <= 0)          key = "fail";
+  else if (cores.length === 1) key = cores[0].axis;
+  else if (cores.length > 1)   key = "mixed";
+  else                         key = "neutral";
+
+  S.over = key;
+  S.phase = "over";
+  META.runs += 1;
+  META.endings[key] = (META.endings[key] || 0) + 1;
+  if (S.dogLost) META.dogLostRuns = (META.dogLostRuns || 0) + 1;
+  saveMeta(META);
+
+  render();
+  renderEnding(key, cores);
+  $("ovl-end").hidden = false;
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER
+   ══════════════════════════════════════════════════════════ */
+
+function render() {
+  renderRail(); renderStack(); renderEnv(); renderMeters(); renderRes();
+  renderFeed(); renderLog(); renderLearn();
+}
+
+function renderRail() {
+  $("g-region").textContent = Math.min(S.regionIdx + 1, DATA.regions.length) + " / " + DATA.regions.length;
+  $("g-event").textContent  = S.evDone + " / " + TOTAL_EVENTS;
+  $("g-rtn").textContent    = S.unlocked.length + " / " + DATA.routines.length;
+  $("g-run").textContent    = (META.runs + 1);
+}
+
+function renderStack() {
+  const ul = $("stack");
+  const read = S.phase === "event" && S.cur ? robotRead(S.cur) : null;
+  ul.innerHTML = S.stack.map((id, i) => {
+    const t = tagOf(id);
+    return '<li data-top="' + (read === id ? "1" : "0") + '">' +
+      '<span class="num">' + (i + 1) + '</span>' +
+      '<span class="nm">' + esc(t.nm) + '<span class="goal">' + esc(t.goal) + '</span></span>' +
+      '<span class="mv">' +
+        '<button type="button" data-mv="up" data-i="' + i + '" aria-label="' + esc(t.nm) + ' 순위 올리기"' + (i === 0 || S.stackLocked ? " disabled" : "") + '>▲</button>' +
+        '<button type="button" data-mv="dn" data-i="' + i + '" aria-label="' + esc(t.nm) + ' 순위 내리기"' + (i === S.stack.length - 1 || S.stackLocked ? " disabled" : "") + '>▼</button>' +
+      '</span></li>';
+  }).join("");
+
+  const ln = $("locknote");
+  if (S.stackLocked) {
+    ln.hidden = false;
+    ln.textContent = "「완전 동조」 해금 — 로봇이 판단 회로를 잠갔다. 수동 조정 불가. 선택만이 순위를 바꾼다.";
+  } else if (S.dogLost) {
+    ln.hidden = false;
+    ln.textContent = "개 보호 태그가 스택에서 제거됐다.";
+  } else { ln.hidden = true; }
+}
+
+function renderEnv() {
+  const box = $("envbox");
+  let html = '<div class="hzrow">' + DATA.hazards.map(h => {
+    const on = S.hazards.includes(h.id);
+    const mit = on && S.modules.includes(h.mit);
+    const cls = mit ? "chip mit" : on ? "chip on" : "chip";
+    return '<span class="' + cls + '" title="' + esc(h.ds) + '"><i class="dot"></i>' + esc(h.nm) + '</span>';
+  }).join("") + '</div>';
+
+  html += '<div class="slotrow">';
+  for (let i = 0; i < slotCap(); i++) {
+    const m = S.modules[i] ? modOf(S.modules[i]) : null;
+    html += '<div class="slotbox' + (m ? " filled" : "") + '">' +
+      (m ? '<b>' + esc(m.nm) + '</b>' + esc(m.slot) : '빈 슬롯') + '</div>';
+  }
+  html += '</div>';
+
+  const act = activeHazards();
+  html += '<p class="subnote">활성 해저드 <b>' + act.length + '</b>개 · 슬롯 ' + S.modules.length + ' / ' + slotCap() +
+    (S.difficulty === "hard"
+      ? ' · 어려움: 활성 해저드 전부 적용, 2개 이상이면 정신 추가 감소'
+      : ' · 쉬움: 활성 해저드 중 1개만 적용') + '</p>';
+  box.innerHTML = html;
+}
+
+function renderMeters() {
+  const rows = [
+    { k:"dogTrust",  nm:"개 신뢰",     good:true,  gone:S.dogLost },
+    { k:"dogStress", nm:"개 스트레스", good:false, gone:S.dogLost },
+    { k:"hp",        nm:"주인공 체력", good:true },
+    { k:"mind",      nm:"주인공 정신", good:true }
+  ];
+  let html = rows.map(r => {
+    const v = S.rel[r.k], pct = (v / MAX[r.k]) * 100;
+    let cls = "ok";
+    if (r.good) { if (v <= 3) cls = "bad"; else if (v <= 5) cls = "warn"; }
+    else        { if (v >= 8) cls = "bad"; else if (v >= 6) cls = "warn"; }
+    return '<div class="meter' + (r.gone ? " gone" : "") + '">' +
+      '<div class="top"><b>' + r.nm + '</b><span>' + (r.gone ? "이탈" : v + " / " + MAX[r.k]) + '</span></div>' +
+      '<div class="bar"><i class="' + cls + '" style="width:' + (r.gone ? 0 : pct) + '%"></i></div></div>';
+  }).join("");
+
+  const hcls = S.hull <= 2 ? "bad" : S.hull <= 4 ? "warn" : "ok";
+  html += '<div class="meter"><div class="top"><b>로봇 내구</b><span>' + S.hull + " / " + MAX.hull + '</span></div>' +
+    '<div class="bar"><i class="' + hcls + '" style="width:' + ((S.hull / MAX.hull) * 100) + '%"></i></div></div>';
+  $("meters").innerHTML = html;
+}
+
+function renderRes() {
+  $("res").innerHTML = RES_META.map(r => {
+    const v = S.res[r.k];
+    return '<div><span class="k">' + r.nm + '</span><span class="v' + (v <= 1 ? " low" : "") + '">' + v + '</span></div>';
+  }).join("");
+}
+
+function fxSummary(fx) {
+  const out = [];
+  for (const k in fx) {
+    const v = fx[k];
+    if (!v) continue;
+    let nm;
+    if (k === "hull") nm = "로봇 내구";
+    else if (k in S.res) nm = RES_META.find(r => r.k === k).nm;
+    else nm = relName(k);
+    out.push(nm + " " + (v > 0 ? "+" : "") + v);
+  }
+  return out.length ? out.join(", ") : "변화 없음";
+}
+
+function renderFeed() {
+  const f = $("feed");
+  const region = DATA.regions[Math.min(S.regionIdx, DATA.regions.length - 1)];
+
+  /* 종료 */
+  if (S.phase === "over") {
+    $("feed-hd").textContent = "종료"; $("feed-eb").textContent = "run complete";
+    f.innerHTML = '<p class="ev-body">회차가 끝났다. 결과는 종료 화면에서 확인할 수 있다.</p>' +
+      '<button type="button" class="nextbtn" id="b-show-end">결과 다시 보기</button>';
+    $("b-show-end").onclick = () => { $("ovl-end").hidden = false; };
+    return;
+  }
+
+  /* ② 낮 — 경로 선택 */
+  if (S.phase === "path") {
+    $("feed-hd").textContent = "낮 · 경로 선택"; $("feed-eb").textContent = "route";
+    const vis = pathVisibility();
+    const visTx = vis === "full" ? "정찰 보고 완전" : vis === "hz" ? "해저드만 식별 · 자원은 미상" : "정보 없음 — 경로명만";
+
+    f.innerHTML =
+      '<div class="ev-region">region ' + region.n + ' · ' + esc(region.nm) + '</div>' +
+      '<h2 class="ev-title">어느 길로 들어갈까</h2>' +
+      '<p class="ev-body">지역 경계에서 로봇이 진입 경로를 산출한다. 보고의 상세도는 <b>정찰 태그의 스택 순위</b>에 따라 달라진다.</p>' +
+      '<div class="read"><span class="lb">scout report</span><span class="tx"><b>' + esc(visTx) + '</b> — 정찰 순위 ' +
+        (S.stack.indexOf("TAG_Scout") + 1) + '위' + (has("RTN_EFF_1") ? " · 「경로 선산출」로 전부 공개" : "") + '</span></div>' +
+      '<div class="choices">' + S.paths.map((p, i) => {
+        const hz = p.hz.length
+          ? p.hz.map(h => { const m = S.modules.includes(hzOf(h).mit); return hzOf(h).nm + (m ? "(상쇄)" : ""); }).join(" · ")
+          : "없음";
+        const gain = fxSummary(p.fx || {});
+        return '<button type="button" class="choice" data-path="' + i + '">' +
+          '<span class="ax ax-none">route ' + (i + 1) + '</span>' +
+          '<span class="ln">' + esc(p.nm) + '</span>' +
+          '<span class="promote">' + esc(p.ds) + '</span>' +
+          '<span class="cost">해저드 ' + (vis === "none" ? "<b>미상</b>" : esc(hz)) +
+            ' · 진입 정산 ' + (vis === "full" ? esc(gain) : "<b>미상</b>") + '</span>' +
+        '</button>';
+      }).join("") + '</div>';
+    return;
+  }
+
+  /* ② 밤 — 정비 */
+  if (S.phase === "night") {
+    $("feed-hd").textContent = "밤 · 정비"; $("feed-eb").textContent = "maintenance";
+    const last = S.regionIdx >= DATA.regions.length - 1;
+    const cap = apCap();
+
+    let acts = DATA.nightActions.map(a => {
+      const ok = a.can(S) && S.nightAP > 0;
+      return '<button type="button" class="choice" data-night="' + a.id + '"' + (ok ? "" : " disabled") + '>' +
+        '<span class="ax ax-none">action</span>' +
+        '<span class="ln">' + esc(a.nm) + '</span>' +
+        '<span class="cost">' + esc(a.ds) + '</span></button>';
+    }).join("");
+
+    const slotFree = S.modules.length < slotCap();
+    acts += DATA.modules.filter(m => !S.modules.includes(m.id)).map(m => {
+      const ok = slotFree && S.res.parts >= TUNE.moduleCost && S.nightAP > 0;
+      return '<button type="button" class="choice" data-night="' + m.id + '"' + (ok ? "" : " disabled") + '>' +
+        '<span class="ax ax-eff">module</span>' +
+        '<span class="ln">' + esc(m.nm) + ' 제작 · 장착</span>' +
+        '<span class="cost">부품 ' + TUNE.moduleCost + ' · ' + esc(m.ds) +
+          (slotFree ? "" : " · <b>슬롯 없음</b>") + '</span></button>';
+    }).join("");
+
+    let pips = "";
+    for (let i = 0; i < cap; i++) pips += '<span class="pip ' + (i < S.nightAP ? "left" : "spent") + '"></span>';
+
+    f.innerHTML =
+      '<div class="ev-region">night · ' + esc(region.nm) + '</div>' +
+      '<h2 class="ev-title">정비와 대화</h2>' +
+      '<p class="ev-body">불을 줄이고 장비를 늘어놓는다. 로봇은 관절에 낀 모래를 털어내며 낮의 판단을 정리한다. 학습은 낮 사건에서만 누적된다 — 밤은 관계와 자원을 되돌리는 시간이다.</p>' +
+      '<div class="apbar"><span class="lb">action points</span><span class="pips">' + pips + '</span>' +
+        '<span class="lb">' + S.nightAP + ' / ' + cap + '</span></div>' +
+      '<div class="choices">' + acts + '</div>' +
+      '<div style="margin-top:16px"><button type="button" class="nextbtn" id="b-next">' +
+        (last ? "마지막 구간을 마치고 결말로" : esc(DATA.regions[S.regionIdx + 1].nm) + "(으)로 이동") +
+      '</button></div>';
+    $("b-next").onclick = advance;
+    return;
+  }
+
+  /* 결과 */
+  if (S.phase === "resolve") {
+    $("feed-hd").textContent = "결과"; $("feed-eb").textContent = "resolved";
+    f.innerHTML =
+      '<div class="ev-region">resolved · ' + esc(region.nm) + '</div>' +
+      '<h2 class="ev-title">' + esc(S.cur.nm) + '</h2>' +
+      '<p class="ev-body">' + esc(S.resolveText) + '</p>' +
+      '<button type="button" class="nextbtn" id="b-next">계속</button>';
+    $("b-next").onclick = advance;
+    return;
+  }
+
+  /* 사건 */
+  const ev = S.cur, read = robotRead(ev), readTag = tagOf(read);
+  const hint = has("RTN_CMP_2") && S.rel.mind > TUNE.lowMindThreshold;
+
+  $("feed-hd").textContent = "사건 " + (S.evInRegion + 1) + " / " + TUNE.eventsPerRegion;
+  $("feed-eb").textContent = "field event";
+  f.innerHTML =
+    '<div class="ev-region">region ' + region.n + ' · ' + esc(region.nm) + '</div>' +
+    '<h2 class="ev-title">' + esc(ev.nm) + '</h2>' +
+    '<p class="ev-body">' + esc(ev.tx) + '</p>' +
+    '<div class="read"><span class="lb">robot read</span><span class="tx">현재 스택대로면 <b>' +
+      esc(readTag.nm) + '</b>을 수행한다. — ' + esc(readTag.goal) + '</span></div>' +
+    '<div class="choices">' + ev.ch.map((c, i) => {
+      const axm = DATA.axes[c.ax];
+      return '<button type="button" class="choice" data-ch="' + i + '">' +
+        '<span class="ax ' + axm.cls + '">' + esc(axm.en) + ' · ' + esc(axm.nm) +
+          (c.tag === read ? " · 스택 일치" : "") + '</span>' +
+        '<span class="ln">' + esc(c.ln) + '</span>' +
+        '<span class="promote">→ ' + esc(tagOf(c.tag).nm) + ' 1순위로</span>' +
+        (hint ? '<span class="hint">로봇 예측: ' + esc(fxSummary(c.fx)) + '</span>' : "") +
+      '</button>';
+    }).join("") + '</div>';
+}
+
+function renderLog() {
+  $("log").innerHTML = S.log.map(l =>
+    '<li class="' + l.cls + '"><span class="who">' + esc(l.who) + '</span>' + esc(l.text) + '</li>').join("");
+}
+
+function renderLearn() {
+  const box = $("learn");
+  if (S.panelMode === "A" && S.unlocked.length === 0) {
+    box.innerHTML = '<div class="panel-locked">학습 데이터가 아직 해석 단계에 있다.<br>루틴이 하나라도 굳으면 이 창이 열린다.' +
+      (S.debug ? debugHtml() : "") + '</div>';
+    return;
+  }
+
+  let html = "";
+  for (const ax of ["guard","eff","comp"]) {
+    const m = DATA.axes[ax];
+    html += '<div class="axis-group axis-' + ax + '">' +
+      '<div class="axis-hd"><span class="nm">' + m.nm + '</span><span class="en">' + m.en + '</span></div>';
+    DATA.routines.filter(r => r.axis === ax).forEach(r => {
+      const on = has(r.id);
+      html += '<div class="slot ' + (on ? "on" : "off") + (r.core ? " core" : "") + (S.justUnlocked === r.id ? " just" : "") + '">' +
+        '<span class="pip"></span><span>' +
+        '<span class="nm">' + (on ? esc(r.nm) : "???") + (r.core ? '<span class="core-tag">core</span>' : "") + '</span>' +
+        '<span class="fx">' + (on ? esc(r.fx) : "미해금") + '</span></span></div>';
+    });
+    html += '</div>';
+  }
+  if (S.debug) html += debugHtml();
+  box.innerHTML = html;
+}
+
+function debugHtml() {
+  let s = '<div class="dbg"><div class="hd">기획용 카운터 · 플레이어 비노출</div>';
+  for (const ax of ["guard","eff","comp"]) {
+    const next = DATA.routines.find(r => r.axis === ax && !has(r.id));
+    s += DATA.axes[ax].nm + " 누적 <b>" + S.axis[ax] + "</b>" +
+      (next ? " → 「" + next.nm + "」까지 <b>" + Math.max(0, next.need - S.axis[ax]) + "</b>회" : " → 전부 해금") + "<br>";
+  }
+  s += "핵심 루틴 " + coresUnlocked().length + " / 3 · 사건 " + S.evDone + "/" + TOTAL_EVENTS +
+    " · 남은 사건 " + (TOTAL_EVENTS - S.evDone) + "<br>핵심 임계 8 · 복수 해금 필요 16 = 총 사건 수";
+  return s + "</div>";
+}
+
+/* ══════════════════════════════════════════════════════════
+   오프닝 (시놉시스)
+   조건을 만족하는 변주 중 가장 구체적인 것을 고르고, 동순위는 랜덤.
+   ══════════════════════════════════════════════════════════ */
+
+function proCondMet(c) {
+  if (!c || c === "always") return true;
+  if (c.indexOf("runs>=") === 0) return META.runs >= Number(c.slice(6));
+  if (c.indexOf("end:") === 0)   return (META.endings[c.slice(4)] || 0) > 0;
+  if (c === "dogLost")  return (META.dogLostRuns || 0) > 0;
+  if (c === "allAxes")  return ["guard","eff","comp"].every(a => (META.endings[a] || 0) > 0);
+  if (c === "anyEnding") return Object.keys(META.endings).some(k => META.endings[k] > 0);
+  return false;
+}
+
+function proSpec(c) {
+  if (!c || c === "always") return 0;
+  if (c === "allAxes") return 4;
+  if (c === "dogLost" || c.indexOf("end:") === 0) return 3;
+  if (c === "anyEnding") return 2;
+  if (c.indexOf("runs>=") === 0) return 1 + Number(c.slice(6)) / 100;
+  return 1;
+}
+
+const PRO_BASE_COUNT = DATA.prologue.filter(b => !b.c).length;
+
+function buildPrologue() {
+  const out = [];
+  DATA.prologue.forEach(b => {
+    if (b.c && !proCondMet(b.c)) return;
+    const ok = b.v.filter(v => proCondMet(v.c));
+    if (!ok.length) return;
+    const top = ok.reduce((m, v) => Math.max(m, proSpec(v.c)), 0);
+    const pool = ok.filter(v => proSpec(v.c) === top);
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    out.push({
+      id: b.id, tx: pick.tx, cls: b.cls || "", cond: pick.c || "always",
+      isVar: !!b.c || proSpec(pick.c) > 0
+    });
+  });
+  return out;
+}
+
+let proTimers = [];
+function clearPro() { proTimers.forEach(clearTimeout); proTimers = []; }
+
+function openPrologue() {
+  clearPro();
+  const blocks = buildPrologue();
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const runNo = META.runs + 1;
+
+  let html =
+    '<span class="slug">' + (runNo === 1 ? "첫 번째 횡단" : runNo + "번째 횡단") + ' · 출발 전날 밤</span>' +
+    '<h2 class="ttl">황무지 가족<i>노쇠한 공학자 · 이름 없는 개 · 서명된 기체</i></h2>' +
+    blocks.map((b, i) =>
+      '<p class="' + b.cls + '" data-var="' + (b.isVar ? 1 : 0) + '" data-i="' + i + '">' + esc(b.tx) + '</p>'
+    ).join("");
+
+  if (S.debug) {
+    html += '<div class="dbgnote"><b>기획용 카운터</b> — 회차 ' + runNo +
+      ' · 문단 ' + blocks.length + '개 (기본 ' + PRO_BASE_COUNT +
+      ' + 삽입 ' + (blocks.length - PRO_BASE_COUNT) + ') · ◆ = 변주 적용<br>' +
+      blocks.map(b => b.id + " ← " + esc(b.cond)).join(" / ") + '</div>';
+  }
+
+  const body = $("pro-body");
+  body.innerHTML = html;
+  body.className = "pro" + (still ? " still" : "") + (S.debug ? " dbg" : "");
+  $("ovl-pro").hidden = false;
+  $("ovl-pro").scrollTop = 0;
+
+  const ps = body.querySelectorAll("p");
+  if (still) { ps.forEach(p => p.classList.add("in")); return; }
+  let t = 300;
+  ps.forEach(p => {
+    proTimers.push(setTimeout(() => p.classList.add("in"), t));
+    t += 850 + Math.min(1700, p.textContent.length * 25);
+  });
+}
+
+function revealAllPrologue() {
+  clearPro();
+  $("pro-body").querySelectorAll("p").forEach(p => p.classList.add("in"));
+}
+function closePrologue() { clearPro(); $("ovl-pro").hidden = true; }
+
+/* ══════════════════════════════════════════════════════════
+   엔딩 · 기록 · 설정
+   ══════════════════════════════════════════════════════════ */
+
+function renderEnding(key, cores) {
+  const e = DATA.endings[key];
+  const allAxes = ["guard","eff","comp"].every(a => (META.endings[a] || 0) > 0);
+
+  let html =
+    '<div class="kicker">ending · run ' + META.runs + '</div>' +
+    '<h2>' + esc(e.nm) + '</h2>' +
+    '<div class="quote">로봇 — 「' + esc(e.q) + '」</div>' +
+    '<p style="color:var(--ink-2)">' + esc(e.tx) + '</p>';
+
+  if (e.flag) html += '<div class="flag"><b>🔴 미확정</b> — ' + esc(e.flag) + '</div>';
+
+  html += '<table class="tbl"><tr><th>판정 근거</th><th></th></tr>' +
+    '<tr><td>해금 핵심 루틴</td><td class="n">' + (cores.length ? cores.map(c => "「" + c.nm + "」").join(" · ") : "없음") + '</td></tr>' +
+    '<tr><td>해금 루틴 총계</td><td class="n">' + S.unlocked.length + " / " + DATA.routines.length + '</td></tr>' +
+    '<tr><td>축 누적 (수호 / 효율 / 순응)</td><td class="n">' + S.axis.guard + " / " + S.axis.eff + " / " + S.axis.comp + '</td></tr>' +
+    '<tr><td>장착 모듈</td><td class="n">' + (S.modules.length ? S.modules.map(m => modOf(m).nm).join(" · ") : "없음") + '</td></tr>' +
+    '<tr><td>반려견</td><td class="n">' + (S.dogLost ? "영구 상실" : "동행 · 신뢰 " + S.rel.dogTrust) + '</td></tr>' +
+    '<tr><td>주인공 (체력 / 정신)</td><td class="n">' + S.rel.hp + " / " + S.rel.mind + '</td></tr>' +
+    '<tr><td>로봇 내구</td><td class="n">' + S.hull + " / " + MAX.hull + '</td></tr>' +
+    '<tr><td>난이도</td><td class="n">' + (S.difficulty === "hard" ? "어려움 (기준 밸런스)" : "쉬움") + '</td></tr>' +
+    '</table>';
+
+  if (allAxes) {
+    html += '<div class="quote" style="border-left-color:var(--verdigris)">은닉 — 로봇 「저는 여러 번 당신을 잃었습니다. 그 기록은 어디에도 저장되어 있지 않습니다.」' +
+      '<span class="hid-note" style="display:block;margin-top:6px">자아 3축 엔딩 전부 수집 — 은닉 타임루프 레이어 해금. 세이브 플래그만 기록하며 밸런스에는 영향이 없다.</span></div>';
+  }
+
+  html += '<div class="sheetfoot">' +
+    '<button type="button" class="nextbtn" id="b-again">새 회차 시작</button>' +
+    '<button type="button" id="b-end-close">닫기</button>' +
+    '<button type="button" id="b-end-rec">기록 보기</button></div>';
+
+  $("end-body").innerHTML = html;
+  $("b-again").onclick = () => { $("ovl-end").hidden = true; restart(); };
+  $("b-end-close").onclick = () => { $("ovl-end").hidden = true; };
+  $("b-end-rec").onclick = () => { $("ovl-end").hidden = true; openRecords(); };
+}
+
+function openRecords() {
+  const ks = [
+    ["guard","수호형"], ["eff","효율형"], ["comp","순응형"],
+    ["mixed","혼합 (미수렴)"], ["neutral","중립 (학습 미완)"], ["fail","횡단 중단"]
+  ];
+  const allAxes = ["guard","eff","comp"].every(a => (META.endings[a] || 0) > 0);
+
+  let html = '<div class="kicker">records</div><h2>회차 기록</h2>' +
+    '<p style="color:var(--ink-2)">호흡이 긴 옴니버스 구조상 회차 간에 넘어가는 것은 <b>플래그뿐</b>이다. 자원·로봇 능력치·난이도에는 일절 영향이 없다 (기획서 §2-7).</p>' +
+    '<table class="tbl"><tr><th>엔딩</th><th style="text-align:right">도달</th></tr>' +
+    ks.map(([k, nm]) => '<tr><td>' + nm + '</td><td class="n">' + (META.endings[k] || 0) + '</td></tr>').join("") +
+    '<tr><td>개를 잃은 회차</td><td class="n">' + (META.dogLostRuns || 0) + '</td></tr>' +
+    '<tr><td><b>총 회차</b></td><td class="n"><b>' + META.runs + '</b></td></tr></table>' +
+    '<div class="flag" style="border-left-color:' + (allAxes ? "var(--verdigris)" : "var(--line)") + '">' +
+    (allAxes
+      ? '<b style="color:var(--verdigris)">은닉 레이어 해금</b> — 로봇 「저는 여러 번 당신을 잃었습니다. 그 기록은 어디에도 저장되어 있지 않습니다.」'
+      : '<b style="color:var(--ink-3)">은닉 레이어</b> — 수호 · 효율 · 순응 세 자아 엔딩을 모두 수집하면 열린다.') +
+    '</div>' +
+    '<p style="color:var(--ink-3);font-size:12.5px">오프닝은 매 회차 시작마다 재생되며, 위 플래그에 따라 문단이 갈리거나 새 문단이 끼어든다. ' +
+    '연출 전용이므로 자원·난이도·학습 임계에는 영향이 없다.</p>' +
+    '<div class="sheetfoot"><button type="button" id="b-rec-close">닫기</button>' +
+    '<button type="button" id="b-rec-pro">오프닝 다시 보기</button>' +
+    '<button type="button" id="b-rec-wipe">기록 초기화</button></div>';
+
+  $("rec-body").innerHTML = html;
+  $("b-rec-close").onclick = () => { $("ovl-rec").hidden = true; };
+  $("b-rec-pro").onclick = () => { $("ovl-rec").hidden = true; openPrologue(); };
+  $("b-rec-wipe").onclick = () => { META = { runs:0, endings:{} }; saveMeta(META); openRecords(); renderRail(); };
+  $("ovl-rec").hidden = false;
+}
+
+function syncSettings() {
+  [["seg-diff","difficulty"], ["seg-panel","panelMode"], ["seg-dbg","debug"]].forEach(([id, key]) => {
+    $(id).querySelectorAll("button").forEach(b => {
+      const cur = key === "debug" ? (S.debug ? "on" : "off") : S[key];
+      b.setAttribute("aria-pressed", b.dataset.v === cur ? "true" : "false");
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOOT
+   ══════════════════════════════════════════════════════════ */
+
+function restart() {
+  newRun(true);
+  log("sys", "출발", "세 가족이 황무지에 들어선다.");
+  log("robot", "로봇", "우선순위 스택을 불러왔습니다. 판단 기준은 당신이 정합니다.");
+  if (META.runs >= 1) log("sys", "회차", (META.runs + 1) + "회차 — 로봇의 학습 기록은 초기화됐다.");
+  startRegion();
+  openPrologue();
+}
+
+document.addEventListener("click", ev => {
+  const ch = ev.target.closest("[data-ch]");
+  if (ch) { choose(Number(ch.dataset.ch)); return; }
+
+  const pa = ev.target.closest("[data-path]");
+  if (pa) { choosePath(Number(pa.dataset.path)); return; }
+
+  const na = ev.target.closest("[data-night]");
+  if (na && !na.disabled) { nightAct(na.dataset.night); return; }
+
+  const mv = ev.target.closest("[data-mv]");
+  if (mv && !S.stackLocked) {
+    const i = Number(mv.dataset.i);
+    const j = mv.dataset.mv === "up" ? i - 1 : i + 1;
+    if (j >= 0 && j < S.stack.length) {
+      const t = S.stack[i]; S.stack[i] = S.stack[j]; S.stack[j] = t;
+      renderStack(); renderFeed();
+    }
+    return;
+  }
+
+  const seg = ev.target.closest("#seg-diff button, #seg-panel button, #seg-dbg button");
+  if (seg) {
+    const g = seg.parentElement.id, v = seg.dataset.v;
+    if (g === "seg-diff")  S.difficulty = v;
+    if (g === "seg-panel") S.panelMode = v;
+    if (g === "seg-dbg")   S.debug = (v === "on");
+    syncSettings(); renderLearn(); renderEnv();
+  }
+});
+
+$("b-set").onclick = () => { syncSettings(); $("ovl-set").hidden = false; };
+$("b-set-close").onclick = () => { $("ovl-set").hidden = true; };
+$("b-restart").onclick = () => { $("ovl-set").hidden = true; $("ovl-end").hidden = true; restart(); };
+$("b-rec").onclick = openRecords;
+
+$("b-pro-all").onclick = revealAllPrologue;
+$("b-pro-go").onclick = closePrologue;
+$("pro-body").onclick = revealAllPrologue;
+
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (!$("ovl-pro").hidden) { closePrologue(); return; }
+  ["ovl-set","ovl-rec","ovl-end"].forEach(id => { $(id).hidden = true; });
+});
+
+newRun(false);
+log("sys", "출발", "세 가족이 황무지에 들어선다.");
+log("robot", "로봇", "우선순위 스택을 불러왔습니다. 판단 기준은 당신이 정합니다.");
+startRegion();
+openPrologue();
+
+/* ── 먼지 (앰비언트) ─────────────────────────────── */
+(function dust() {
+  const c = $("dust"), x = c.getContext("2d");
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let W, H, ps = [];
+  function fit() {
+    W = c.width = window.innerWidth; H = c.height = window.innerHeight;
+    ps = Array.from({ length:46 }, () => ({
+      x: Math.random() * W, y: Math.random() * H,
+      r: Math.random() * 1.5 + .35,
+      vx: Math.random() * .22 + .05, vy: (Math.random() - .5) * .07,
+      a: Math.random() * .3 + .07
+    }));
+  }
+  const col = () => getComputedStyle(document.documentElement).getPropertyValue("--ink-3").trim() || "#888";
+  function draw() {
+    x.clearRect(0, 0, W, H);
+    const cc = col();
+    ps.forEach(p => {
+      x.globalAlpha = p.a; x.fillStyle = cc;
+      x.beginPath(); x.arc(p.x, p.y, p.r, 0, 6.284); x.fill();
+      if (!still) {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x > W + 4) p.x = -4;
+        if (p.y > H + 4) p.y = -4; else if (p.y < -4) p.y = H + 4;
+      }
+    });
+    x.globalAlpha = 1;
+    if (!still) requestAnimationFrame(draw);
+  }
+  fit(); draw();
+  window.addEventListener("resize", () => { fit(); if (still) draw(); });
+})();
+</script>
