@@ -8,7 +8,6 @@
 <meta name="description" content="로봇 우선순위 태그 · 학습 누적 · 자아 3축 엔딩 분기 검증 프로토타입">
 <title>황무지 가족 — 학습 루프 프로토타입</title>
 <style>
-  /* 아티팩트 스켈레톤이 제공하던 최소 리셋을 대체 */
   *, *::before, *::after { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body { margin: 0; }
@@ -401,6 +400,36 @@ button:disabled { opacity: .38; cursor: default; }
 .hid-note { font-size: 12.5px; color: var(--verdigris); line-height: 1.6; }
 .sheetfoot { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
 
+/* ── 삽화 ──────────────────────────────────────── */
+.art {
+  position: relative; margin: 0 0 14px;
+  border: 1px solid var(--line); background: var(--panel-2);
+  overflow: hidden;
+}
+.art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.art.hero  { aspect-ratio: 16 / 7; }
+.art.band  { aspect-ratio: 12 / 5; }
+.art.strip { aspect-ratio: 24 / 7; }
+.art .ph {
+  position: absolute; inset: 0;
+  display: grid; place-items: center; text-align: center;
+  font-family: ui-monospace, Consolas, monospace; font-size: 11px; line-height: 1.6;
+  color: var(--ink-3);
+  background: repeating-linear-gradient(-45deg, var(--scan) 0 3px, transparent 3px 9px);
+}
+.art .ph b { display: block; color: var(--rust); letter-spacing: .1em; }
+
+.thumb {
+  flex: 0 0 auto; width: 34px; height: 34px;
+  border: 1px solid var(--line); background: var(--panel-2); overflow: hidden;
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.thumb.ph { background: repeating-linear-gradient(-45deg, var(--scan) 0 3px, transparent 3px 9px); }
+.thumb.big { width: 44px; height: 44px; }
+
+.inv .row.art-row { grid-template-columns: 34px 1fr; }
+.choice.actor.has-art { display: grid; grid-template-columns: 44px 1fr; gap: 11px; align-items: start; }
+
 /* ── 오프닝 (시놉시스) ─────────────────────────── */
 .pro-ovl {
   position: fixed; inset: 0; z-index: 60;
@@ -573,7 +602,7 @@ footer.note b { color: var(--ink-2); }
 
     <div class="opt">
       <div class="lb">난이도</div>
-      <div class="ds">어려움이 기준 밸런스(기획 의도). 개 이탈 임계·환경 압박 중첩·개 상실 영구성·모듈 슬롯 수·밤 행동 포인트가 모두 여기에 종속된다.</div>
+      <div class="ds">어려움이 기준 밸런스(기획 의도). 개 이탈 임계·환경 압박 중첩·<b>지역당 해저드 tick 횟수</b>·개 상실 영구성·모듈 슬롯 수·밤 행동 포인트가 모두 여기에 종속된다.</div>
       <div class="seg" id="seg-diff">
         <button type="button" data-v="hard">어려움 (기준)</button>
         <button type="button" data-v="easy">쉬움</button>
@@ -611,6 +640,201 @@ footer.note b { color: var(--ink-2); }
 "use strict";
 
 /* ══════════════════════════════════════════════════════════
+   ART — 삽화 매니페스트
+   빌드 스크립트(build-standalone.ps1)가 assets/ 를 훑어 이 구간을 채운다.
+   키 = 슬롯 ID, 값 = 이미지 경로(Pages) 또는 data URI(아티팩트).
+   비어 있어도 게임은 정상 동작한다 — 없는 슬롯은 그냥 렌더하지 않는다.
+   파일을 규칙대로 떨어뜨리면 코드 수정 없이 붙는다:
+     assets/event/EV_01.webp   assets/region/RG_1.webp   assets/chapter/CH_1.webp
+     assets/outpost/OP_1.webp  assets/item/ITM_Filter.webp  assets/actor/AC_dog.webp
+   ══════════════════════════════════════════════════════════ */
+/* ART:BEGIN — 빌드 산출물. 직접 수정하지 말 것 */
+const ART = {
+  "EV_01_comp": "assets/event/EV_01_comp.svg",
+  "EV_01_eff": "assets/event/EV_01_eff.svg",
+  "EV_01_guard": "assets/event/EV_01_guard.svg",
+  "EV_01": "assets/event/EV_01.svg",
+  "EV_02_comp": "assets/event/EV_02_comp.svg",
+  "EV_02_eff": "assets/event/EV_02_eff.svg",
+  "EV_02_guard": "assets/event/EV_02_guard.svg",
+  "EV_02": "assets/event/EV_02.svg",
+  "EV_03_comp": "assets/event/EV_03_comp.svg",
+  "EV_03_eff": "assets/event/EV_03_eff.svg",
+  "EV_03_guard": "assets/event/EV_03_guard.svg",
+  "EV_03": "assets/event/EV_03.svg",
+  "EV_04_comp": "assets/event/EV_04_comp.svg",
+  "EV_04_eff": "assets/event/EV_04_eff.svg",
+  "EV_04_guard": "assets/event/EV_04_guard.svg",
+  "EV_04": "assets/event/EV_04.svg",
+  "EV_05_comp": "assets/event/EV_05_comp.svg",
+  "EV_05_eff": "assets/event/EV_05_eff.svg",
+  "EV_05_guard": "assets/event/EV_05_guard.svg",
+  "EV_05": "assets/event/EV_05.svg",
+  "EV_06_comp": "assets/event/EV_06_comp.svg",
+  "EV_06_eff": "assets/event/EV_06_eff.svg",
+  "EV_06_guard": "assets/event/EV_06_guard.svg",
+  "EV_06": "assets/event/EV_06.svg",
+  "EV_07_comp": "assets/event/EV_07_comp.svg",
+  "EV_07_eff": "assets/event/EV_07_eff.svg",
+  "EV_07_guard": "assets/event/EV_07_guard.svg",
+  "EV_07": "assets/event/EV_07.svg",
+  "EV_08_comp": "assets/event/EV_08_comp.svg",
+  "EV_08_eff": "assets/event/EV_08_eff.svg",
+  "EV_08_guard": "assets/event/EV_08_guard.svg",
+  "EV_08": "assets/event/EV_08.svg",
+  "EV_09_comp": "assets/event/EV_09_comp.svg",
+  "EV_09_eff": "assets/event/EV_09_eff.svg",
+  "EV_09_guard": "assets/event/EV_09_guard.svg",
+  "EV_09": "assets/event/EV_09.svg",
+  "EV_10_comp": "assets/event/EV_10_comp.svg",
+  "EV_10_eff": "assets/event/EV_10_eff.svg",
+  "EV_10_guard": "assets/event/EV_10_guard.svg",
+  "EV_10": "assets/event/EV_10.svg",
+  "EV_11_comp": "assets/event/EV_11_comp.svg",
+  "EV_11_eff": "assets/event/EV_11_eff.svg",
+  "EV_11_guard": "assets/event/EV_11_guard.svg",
+  "EV_11": "assets/event/EV_11.svg",
+  "EV_12_comp": "assets/event/EV_12_comp.svg",
+  "EV_12_eff": "assets/event/EV_12_eff.svg",
+  "EV_12_guard": "assets/event/EV_12_guard.svg",
+  "EV_12": "assets/event/EV_12.svg",
+  "EV_13_comp": "assets/event/EV_13_comp.svg",
+  "EV_13_eff": "assets/event/EV_13_eff.svg",
+  "EV_13_guard": "assets/event/EV_13_guard.svg",
+  "EV_13": "assets/event/EV_13.svg",
+  "EV_14_comp": "assets/event/EV_14_comp.svg",
+  "EV_14_eff": "assets/event/EV_14_eff.svg",
+  "EV_14_guard": "assets/event/EV_14_guard.svg",
+  "EV_14": "assets/event/EV_14.svg",
+  "EV_15_comp": "assets/event/EV_15_comp.svg",
+  "EV_15_eff": "assets/event/EV_15_eff.svg",
+  "EV_15_guard": "assets/event/EV_15_guard.svg",
+  "EV_15": "assets/event/EV_15.svg",
+  "EV_16_comp": "assets/event/EV_16_comp.svg",
+  "EV_16_eff": "assets/event/EV_16_eff.svg",
+  "EV_16_guard": "assets/event/EV_16_guard.svg",
+  "EV_16": "assets/event/EV_16.svg",
+  "EV_17_comp": "assets/event/EV_17_comp.svg",
+  "EV_17_eff": "assets/event/EV_17_eff.svg",
+  "EV_17_guard": "assets/event/EV_17_guard.svg",
+  "EV_17": "assets/event/EV_17.svg",
+  "EV_18_comp": "assets/event/EV_18_comp.svg",
+  "EV_18_eff": "assets/event/EV_18_eff.svg",
+  "EV_18_guard": "assets/event/EV_18_guard.svg",
+  "EV_18": "assets/event/EV_18.svg",
+  "EV_19_comp": "assets/event/EV_19_comp.svg",
+  "EV_19_eff": "assets/event/EV_19_eff.svg",
+  "EV_19_guard": "assets/event/EV_19_guard.svg",
+  "EV_19": "assets/event/EV_19.svg",
+  "EV_20_comp": "assets/event/EV_20_comp.svg",
+  "EV_20_eff": "assets/event/EV_20_eff.svg",
+  "EV_20_guard": "assets/event/EV_20_guard.svg",
+  "EV_20": "assets/event/EV_20.svg",
+  "EV_21_comp": "assets/event/EV_21_comp.svg",
+  "EV_21_eff": "assets/event/EV_21_eff.svg",
+  "EV_21_guard": "assets/event/EV_21_guard.svg",
+  "EV_21": "assets/event/EV_21.svg",
+  "EV_22_comp": "assets/event/EV_22_comp.svg",
+  "EV_22_eff": "assets/event/EV_22_eff.svg",
+  "EV_22_guard": "assets/event/EV_22_guard.svg",
+  "EV_22": "assets/event/EV_22.svg",
+  "EV_23_comp": "assets/event/EV_23_comp.svg",
+  "EV_23_eff": "assets/event/EV_23_eff.svg",
+  "EV_23_guard": "assets/event/EV_23_guard.svg",
+  "EV_23": "assets/event/EV_23.svg",
+  "EV_24_comp": "assets/event/EV_24_comp.svg",
+  "EV_24_eff": "assets/event/EV_24_eff.svg",
+  "EV_24_guard": "assets/event/EV_24_guard.svg",
+  "EV_24": "assets/event/EV_24.svg",
+  "EV_25_comp": "assets/event/EV_25_comp.svg",
+  "EV_25_eff": "assets/event/EV_25_eff.svg",
+  "EV_25_guard": "assets/event/EV_25_guard.svg",
+  "EV_25": "assets/event/EV_25.svg",
+  "EV_26_comp": "assets/event/EV_26_comp.svg",
+  "EV_26_eff": "assets/event/EV_26_eff.svg",
+  "EV_26_guard": "assets/event/EV_26_guard.svg",
+  "EV_26": "assets/event/EV_26.svg",
+  "EV_27_comp": "assets/event/EV_27_comp.svg",
+  "EV_27_eff": "assets/event/EV_27_eff.svg",
+  "EV_27_guard": "assets/event/EV_27_guard.svg",
+  "EV_27": "assets/event/EV_27.svg",
+  "EV_28_comp": "assets/event/EV_28_comp.svg",
+  "EV_28_eff": "assets/event/EV_28_eff.svg",
+  "EV_28_guard": "assets/event/EV_28_guard.svg",
+  "EV_28": "assets/event/EV_28.svg",
+  "EV_29_comp": "assets/event/EV_29_comp.svg",
+  "EV_29_eff": "assets/event/EV_29_eff.svg",
+  "EV_29_guard": "assets/event/EV_29_guard.svg",
+  "EV_29": "assets/event/EV_29.svg",
+  "EV_30_comp": "assets/event/EV_30_comp.svg",
+  "EV_30_eff": "assets/event/EV_30_eff.svg",
+  "EV_30_guard": "assets/event/EV_30_guard.svg",
+  "EV_30": "assets/event/EV_30.svg",
+  "EV_31_comp": "assets/event/EV_31_comp.svg",
+  "EV_31_eff": "assets/event/EV_31_eff.svg",
+  "EV_31_guard": "assets/event/EV_31_guard.svg",
+  "EV_31": "assets/event/EV_31.svg",
+  "EV_32_comp": "assets/event/EV_32_comp.svg",
+  "EV_32_eff": "assets/event/EV_32_eff.svg",
+  "EV_32_guard": "assets/event/EV_32_guard.svg",
+  "EV_32": "assets/event/EV_32.svg",
+  "RG_1": "assets/region/RG_1.svg",
+  "RG_2": "assets/region/RG_2.svg",
+  "RG_3": "assets/region/RG_3.svg",
+  "RG_4": "assets/region/RG_4.svg",
+  "RG_5": "assets/region/RG_5.svg",
+  "RG_6": "assets/region/RG_6.svg",
+  "CH_1": "assets/chapter/CH_1.svg",
+  "CH_2": "assets/chapter/CH_2.svg",
+  "CH_3": "assets/chapter/CH_3.svg",
+  "OP_1": "assets/outpost/OP_1.svg",
+  "OP_2": "assets/outpost/OP_2.svg",
+  "ITM_Blueprint": "assets/item/ITM_Blueprint.svg",
+  "ITM_Collar": "assets/item/ITM_Collar.svg",
+  "ITM_Filter": "assets/item/ITM_Filter.svg",
+  "ITM_Keycard": "assets/item/ITM_Keycard.svg",
+  "ITM_Map": "assets/item/ITM_Map.svg",
+  "ITM_MusicChip": "assets/item/ITM_MusicChip.svg",
+  "ITM_Photo": "assets/item/ITM_Photo.svg",
+  "ITM_Radio": "assets/item/ITM_Radio.svg",
+  "ITM_Toolkit": "assets/item/ITM_Toolkit.svg",
+  "AC_dog": "assets/actor/AC_dog.svg",
+  "AC_robot": "assets/actor/AC_robot.svg",
+  "AC_self": "assets/actor/AC_self.svg"
+};
+/* ART:END */
+
+const ART_KIND = { EV:"event", RG:"region", CH:"chapter", OP:"outpost", ITM:"item", AC:"actor" };
+const artKind = id => ART_KIND[id.split("_")[0]] || "misc";
+
+/* 슬롯이 비면 아무것도 렌더하지 않는다.
+   기획용 카운터를 켜면 기대 파일 경로를 자리에 표시한다(발주·진행 추적용). */
+function artHtml(id, cls, label) {
+  const src = ART[id];
+  if (src) {
+    return '<div class="art ' + cls + '"><img src="' + src + '" alt="' + esc(label || "") +
+      '" loading="lazy" decoding="async"></div>';
+  }
+  if (!S || !S.debug) return "";
+  return '<div class="art ' + cls + '"><div class="ph"><b>삽화 미등록</b>assets/' +
+    artKind(id) + '/' + id + '.webp</div></div>';
+}
+
+/* 등록된 첫 슬롯을 쓴다. 결과 화면은 선택별 삽화 → 없으면 사건 삽화로 폴백. */
+function artFirst(ids, cls, label) {
+  for (let i = 0; i < ids.length; i++) if (ART[ids[i]]) return artHtml(ids[i], cls, label);
+  return artHtml(ids[ids.length - 1], cls, label);
+}
+
+function thumbHtml(id, cls) {
+  const src = ART[id];
+  if (src) return '<span class="thumb ' + (cls || "") + '"><img src="' + src +
+    '" alt="" loading="lazy" decoding="async"></span>';
+  if (!S || !S.debug) return "";
+  return '<span class="thumb ph ' + (cls || "") + '" title="assets/' + artKind(id) + '/' + id + '.webp"></span>';
+}
+
+/* ══════════════════════════════════════════════════════════
    ① TUNE — 밸런스 상수 단일 소유처
    ══════════════════════════════════════════════════════════ */
 
@@ -620,12 +844,14 @@ const TUNE = {
      '자아 둘을 가르치려면 여유 0으로 반씩 써야 한다'는 성질을 챕터 구조에서도 유지. */
   eventsPerRegion: 3,
 
-  /* 챕터 종료 거점 — 밤보다 확실히 좋은 정산 */
-  outpostAPBonus: 2,
-  outpostGain: { water:3, meds:2, parts:2 },
-  outpostHeal: { hp:3, mind:2, hull:2, dogStress:-3, dogTrust:1 },
+  /* 챕터 종료 거점 — 밤보다 좋되, 회차를 안전하게 만들 정도는 아니어야 한다.
+     구 값(체력+3·정신+2·내구+2·스트레스-3·자원7·AP+2)은 두 번으로 회차 전체를
+     안전권에 올려놨다 (7/30 실측 '어려움이 쉽다'). */
+  outpostAPBonus: 1,
+  outpostGain: { water:2, meds:1, parts:1 },
+  outpostHeal: { hp:2, mind:1, hull:1, dogStress:-2, dogTrust:1 },
 
-  startRes:  { water:8, power:6, meds:4, parts:4, spec:2 },
+  startRes:  { water:7, power:5, meds:3, parts:3, spec:1 },
   startRel:  { dogTrust:5, dogStress:2, hp:10, mind:7 },
   startHull: 6,
 
@@ -635,17 +861,22 @@ const TUNE = {
   moduleSlots:  { hard:3, easy:4 },
   dogStressLimit: { hard:10, easy:12 },
 
-  /* 환경 해저드는 매 사건이 아니라 격사건 tick.
-     매 사건 tick이던 구 값에서는 방사능 경로 하나가 지역당 체력 -4로
-     회복 불가능한 나선을 만들었다 (7/30 플레이 실측). */
-  hazardEveryNthEvent: 2,
+  /* 지역당 해저드 tick 횟수.
+     구 hazardEveryNthEvent:2 는 사건 4개 구조를 전제한 값이라, 챕터 개편으로
+     사건이 3개가 되자 (1,2,3)%2 → 2번째 사건에서만 발동해 지역당 1회로 줄었다.
+     환경 압박이 사실상 사라지고 모듈이 막을 대상이 없어졌다. */
+  hazardTicksPerRegion: { hard:2, easy:1 },
   hazardStackPenaltyAt: 3,     // 활성 해저드 N개 이상일 때 어려움 추가 가중
 
-  moduleCost: 2,               // 규격 부품 → 모듈 1개
+  /* 모듈은 규격 + 일반 부품을 둘 다 요구한다.
+     규격만 먹던 구 값에서는 일반 부품에 소비처가 없어(수리 외) 로봇 파밍의
+     회수량이 체감되지 않았고, 규격만 모으면 슬롯이 금방 다 찼다. */
+  moduleSpec:  2,
+  moduleParts: 2,
   repairCost: 2,               // 일반 부품 → 내구 +3
   chargeCost: 2,               // 전력 → 내구 +2
   dogCareCost: 1,              // 약품 → 스트레스 -3
-  treatCost: 1,                // 약품 → 체력 +3
+  treatCost: 1,                // 약품 → 체력 +2
 
   lowMindThreshold: 2          // 이하면 밤 행동 포인트 -1, 예측 표시 차단
 };
@@ -809,7 +1040,7 @@ const DATA = {
 
   /* 거점 3택1 — 세 기둥(제작 / 환경 대응 / 생존·관계)에 하나씩 대응 */
   boons: [
-    { id:"BOON_Depot", nm:"보급 창고", ds:"규격 부품 +3 · 일반 부품 +2 (즉시)",
+    { id:"BOON_Depot", nm:"보급 창고", ds:"규격 부품 +2 · 일반 부품 +2 (즉시)",
       line:"선반 목록이 남아 있었다. 규격품만 골라 담았다." },
     { id:"BOON_Bench", nm:"작업대",   ds:"모듈 슬롯 +1 (이 회차 영구)",
       line:"고정 바이스가 살아 있다. 로봇의 외장을 한 겹 더 붙일 수 있다." },
@@ -1224,13 +1455,15 @@ const DATA = {
       can:s => !s.dogLost && s.res.meds >= TUNE.dogCareCost,
       fx:{ meds:-TUNE.dogCareCost, dogStress:-3, dogTrust:1 },
       line:"개의 심박이 안정 범위로 돌아왔습니다." },
-    { id:"ACT_Treat",  nm:"치료",          ds:"약품 " + TUNE.treatCost + " → 체력 +3",
+    { id:"ACT_Treat",  nm:"치료",          ds:"약품 " + TUNE.treatCost + " → 체력 +2",
       can:s => s.res.meds >= TUNE.treatCost && s.rel.hp < 10,
-      fx:{ meds:-TUNE.treatCost, hp:3 },
+      fx:{ meds:-TUNE.treatCost, hp:2 },
       line:"상처 봉합은 제 손 정밀도 밖입니다. 조명은 제가 잡겠습니다." },
-    { id:"ACT_Rest",   nm:"휴식",          ds:"비용 없음 → 체력 +2 · 정신 +1",
-      can:() => true,
-      fx:{ hp:2, mind:1 },
+    /* 휴식이 무료였을 때는 AP를 전부 회복에 쏟아 체력이 사실상 무제한이었다.
+       식수를 물려 회복이 자원 경제와 경쟁하게 한다. */
+    { id:"ACT_Rest",   nm:"휴식",          ds:"식수 1 → 체력 +2 · 정신 +1",
+      can:s => s.res.water >= 1,
+      fx:{ water:-1, hp:2, mind:1 },
       line:"경계는 제가 서겠습니다. 눕는 편이 낫습니다." },
     { id:"ACT_Talk",   nm:"로봇과 대화",   ds:"비용 없음 → 정신 +1 · 개 신뢰 +1",
       can:() => true,
@@ -1437,6 +1670,7 @@ function newRun(keepSettings) {
     phase: "path",
     cur: null,
     resolveText: "",
+    resolveAxis: null,
     log: [],
     over: null
   };
@@ -1489,7 +1723,9 @@ function nameOf(k) {
 const fmtDelta = (nm, v) => nm + " " + (v > 0 ? "+" : "") + v;
 const hasBoon = id => S.boons.indexOf(id) >= 0;
 const slotCap = () => TUNE.moduleSlots[S.difficulty] + (hasBoon("BOON_Bench") ? 1 : 0);
-const modCost = () => Math.max(1, TUNE.moduleCost - (hasItem("ITM_Toolkit") ? 1 : 0));
+const modSpec  = () => Math.max(1, TUNE.moduleSpec - (hasItem("ITM_Toolkit") ? 1 : 0));
+const modParts = () => TUNE.moduleParts;
+const canBuild = () => S.res.spec >= modSpec() && S.res.parts >= modParts();
 
 /* 챕터 조회 — 구간 인덱스(0-based)로 소속 챕터와 경계를 판정 */
 const chapterOf = i => DATA.chapters.find(c => c.regions.indexOf(DATA.regions[i].n) >= 0);
@@ -1677,6 +1913,7 @@ function choose(idx) {
   }
 
   S.resolveText = ch.rs;
+  S.resolveAxis = ch.ax;   /* 결과 화면 삽화 선택용 */
 
   /* 파밍 기회면 행위자 선택으로, 아니면 바로 결과 */
   if (canFarm(ev)) { S.pending = ch; S.phase = "actor"; render(); return; }
@@ -1769,8 +2006,8 @@ function finishEvent() {
 function hazardTick() {
   const act = activeHazards();
   if (!act.length) return;
-  /* 격사건 tick — 매 사건 tick이던 구 값은 회복 불가능한 나선을 만들었다 */
-  if ((S.evInRegion + 1) % TUNE.hazardEveryNthEvent !== 0) return;
+  /* 지역당 앞쪽 N개 사건에서만 tick — 난이도 종속 */
+  if (S.evInRegion >= TUNE.hazardTicksPerRegion[S.difficulty]) return;
 
   const list = S.difficulty === "hard" ? act : act.slice(0, 1);
   const fx = {};
@@ -1878,7 +2115,7 @@ function pickBoon(id) {
   S.boonPicked = true;
 
   if (id === "BOON_Depot") {
-    const d = applyFx({ spec:3, parts:2 }, { raw:true });
+    const d = applyFx({ spec:2, parts:2 }, { raw:true });
     log("sys", b.nm, d.join(" · "));
   } else {
     log("sys", b.nm, b.ds);
@@ -1944,11 +2181,13 @@ function nightAct(id) {
   if ((S.phase !== "night" && S.phase !== "outpost") || S.nightAP <= 0) return;
 
   if (id.indexOf("MOD_") === 0) {
-    if (S.modules.length >= slotCap() || S.res.spec < modCost()) return;
+    if (S.modules.length >= slotCap() || !canBuild()) return;
     const m = modOf(id);
-    S.res.spec -= modCost();
+    S.res.spec  -= modSpec();
+    S.res.parts -= modParts();
     S.modules.push(id);
-    log("sys", "제작", "「" + m.nm + "」 장착 — " + m.ds + " (규격 부품 -" + modCost() + ")");
+    log("sys", "제작", "「" + m.nm + "」 장착 — " + m.ds +
+      " (규격 -" + modSpec() + " · 부품 -" + modParts() + ")");
     log("robot", "로봇", m.nm + " 연결을 확인했습니다. 해당 환경 조건은 이제 무시할 수 있습니다.");
   } else {
     const a = DATA.nightActions.find(x => x.id === id);
@@ -2106,7 +2345,9 @@ function renderItems() {
   }
   box.innerHTML = S.items.map(id => {
     const it = itemOf(id);
-    return '<div class="row"><i></i><span><span class="nm">' + esc(it.nm) + '</span>' +
+    const th = thumbHtml(id);
+    return '<div class="row' + (th ? " art-row" : "") + '">' + (th || '<i></i>') +
+      '<span><span class="nm">' + esc(it.nm) + '</span>' +
       '<span class="fx">' + esc(it.fx) + '</span></span></div>';
   }).join("");
 }
@@ -2137,11 +2378,11 @@ function actionListHtml() {
 
   const slotFree = S.modules.length < slotCap();
   acts += DATA.modules.filter(m => !S.modules.includes(m.id)).map(m => {
-    const ok = slotFree && S.res.spec >= modCost() && S.nightAP > 0;
+    const ok = slotFree && canBuild() && S.nightAP > 0;
     return '<button type="button" class="choice" data-night="' + m.id + '"' + (ok ? "" : " disabled") + '>' +
       '<span class="ax ax-eff">module</span>' +
       '<span class="ln">' + esc(m.nm) + ' 제작 · 장착</span>' +
-      '<span class="cost">규격 부품 ' + modCost() + ' · ' + esc(m.ds) +
+      '<span class="cost">규격 ' + modSpec() + ' + 부품 ' + modParts() + ' · ' + esc(m.ds) +
         (slotFree ? "" : " · <b>슬롯 없음</b>") + '</span></button>';
   }).join("");
   return acts;
@@ -2175,6 +2416,7 @@ function renderFeed() {
     const visTx = vis === "full" ? "정찰 보고 완전" : vis === "hz" ? "해저드만 식별 · 자원은 미상" : "정보 없음 — 경로명만";
 
     f.innerHTML =
+      artHtml("RG_" + region.n, "strip", region.nm) +
       '<div class="ev-region">region ' + region.n + ' · ' + esc(region.nm) + '</div>' +
       '<h2 class="ev-title">어느 길로 들어갈까</h2>' +
       '<p class="ev-body">지역 경계에서 로봇이 진입 경로를 산출한다. 보고의 상세도는 <b>정찰 태그의 스택 순위</b>에 따라 달라진다.</p>' +
@@ -2202,6 +2444,7 @@ function renderFeed() {
     $("feed-hd").textContent = "챕터 " + c.n + " / " + DATA.chapters.length;
     $("feed-eb").textContent = "chapter";
     f.innerHTML =
+      artHtml("CH_" + c.n, "hero", c.nm) +
       '<div class="ev-region">chapter ' + c.n + ' · ' + esc(c.goal) + '</div>' +
       '<h2 class="ev-title">' + esc(c.nm) + '</h2>' +
       '<p class="ev-body">' + esc(c.tx) + '</p>' +
@@ -2220,6 +2463,7 @@ function renderFeed() {
     $("feed-hd").textContent = "거점 · " + o.nm; $("feed-eb").textContent = "outpost";
 
     let html =
+      artHtml("OP_" + c.n, "band", o.nm) +
       '<div class="ev-region">outpost · 챕터 ' + c.n + ' 종료</div>' +
       '<h2 class="ev-title">' + esc(o.nm) + '</h2>' +
       '<p class="ev-body">' + esc(o.tx) + '</p>';
@@ -2286,12 +2530,14 @@ function renderFeed() {
         y = "???  무엇을 물어올지 알 수 없다";
       }
       const cost = Object.keys(a.cost).map(k => nameOf(k) + " " + a.cost[k]).join(" · ");
-      return '<button type="button" class="choice actor" data-actor="' + a.id + '"' + (dis ? " disabled" : "") + '>' +
+      const th = thumbHtml("AC_" + a.id, "big");
+      return '<button type="button" class="choice actor' + (th ? " has-art" : "") +
+        '" data-actor="' + a.id + '"' + (dis ? " disabled" : "") + '>' + th + '<span>' +
         '<span class="ax ax-none">' + esc(a.en) + ' · ' + esc(a.nm) + '</span>' +
         '<span class="ln">' + esc(a.ds) + '</span>' +
         '<span class="yield">' + esc(y) + '  /  ' + esc(cost) + '</span>' +
         '<span class="lim">' + esc(dis ? "개는 더 이상 함께 있지 않다." : a.lim) + '</span>' +
-      '</button>';
+      '</span></button>';
     }).join("");
 
     f.innerHTML =
@@ -2308,6 +2554,7 @@ function renderFeed() {
   if (S.phase === "resolve") {
     $("feed-hd").textContent = "결과"; $("feed-eb").textContent = "resolved";
     f.innerHTML =
+      artFirst([S.cur.id + "_" + S.resolveAxis, S.cur.id], "band", S.cur.nm) +
       '<div class="ev-region">resolved · ' + esc(region.nm) + '</div>' +
       '<h2 class="ev-title">' + esc(S.cur.nm) + '</h2>' +
       '<p class="ev-body">' + esc(S.resolveText) + '</p>' +
@@ -2323,6 +2570,7 @@ function renderFeed() {
   $("feed-hd").textContent = "사건 " + (S.evInRegion + 1) + " / " + TUNE.eventsPerRegion;
   $("feed-eb").textContent = "field event";
   f.innerHTML =
+    artHtml(ev.id, "band", ev.nm) +
     '<div class="ev-region">region ' + region.n + ' · ' + esc(region.nm) + '</div>' +
     '<h2 class="ev-title">' + esc(ev.nm) + '</h2>' +
     '<p class="ev-body">' + esc(ev.tx) + '</p>' +
